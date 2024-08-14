@@ -1,4 +1,3 @@
-from concurrent.futures import ThreadPoolExecutor
 import json
 import os
 from tempfile import NamedTemporaryFile
@@ -7,6 +6,8 @@ import tkinter as tk
 import zipfile
 
 import matplotlib
+
+from popup_windows import LoadingPopup
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -14,6 +15,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 from instrument import Intrument
 from worker_thread import WorkerThread
+# from popup_windows import LoadingPopup
 
 import numpy as np
 from queue import Queue
@@ -26,8 +28,7 @@ from threading import Thread
 
 class Application(tk.Frame):
     def __init__(self, master=None):
-        self.master=master
-        tk.Frame.__init__(self,master)
+        tk.Frame.__init__(self, master)
         self.createWidgets()
 
         self.master.title('Bubbles GUI')
@@ -50,7 +51,7 @@ class Application(tk.Frame):
         }
 
         # creates temporary file for storing raw data
-        self.tmp_savefile = NamedTemporaryFile(delete=False)
+        self.tmp_savefile = None
         self.metadata = {
             'scope_name'    : self.scope.instrument_name,
             'sample_rate'   : self.scope.acquisition.sample_rate,
@@ -127,13 +128,15 @@ class Application(tk.Frame):
         """
         if self.machine_state['acquisition_on']:
             self.scope.measurement.initiate()
+            
             xy = np.array(self.scope.fetch_data())
             self.scope_queue.put(xy)
             
             # write y-vals of the waveform into file
             with open(self.tmp_savefile.name, 'ab') as file:
                 file.write(xy[:,1].tobytes())
-
+            
+            del xy
     def plot(self):
         """
         Plots waveform data. This method is run only once as a first time plot.
@@ -154,7 +157,7 @@ class Application(tk.Frame):
 
         self.canvas.draw()
         self.machine_state['first_acquisition'] = False
-
+        self.metadata['record_length'] = len(xy[:,1])
     def update(self):
         """
         Update loop-like function for plots.
@@ -162,11 +165,14 @@ class Application(tk.Frame):
         def _update():
             if self.scope_queue.qsize() != 0:
                 xy = self.scope_queue.get()
+
                 if self.machine_state['generator_on']:
                     self.update_voltage(xy)
                 
                 if self.machine_state['acquisition_on']:
                     self.update_plot(xy)
+                
+                del xy
 
         # updates plot in the background every 200 ms at most 
         Thread(target=_update).start()
@@ -219,8 +225,8 @@ class Application(tk.Frame):
 
         if not self.machine_state['acquisition_on']:
             self.metadata['sample_rate'] = self.scope.acquisition.sample_rate
-            with open(self.tmp_savefile.name, 'wb') as file:
-                pass
+            self.tmp_savefile = NamedTemporaryFile()
+            print(self.tmp_savefile.name)
         
         self.machine_state['acquisition_on'] = not self.machine_state['acquisition_on']
 
@@ -245,10 +251,17 @@ class Application(tk.Frame):
                 message='Stop acquisition before saving file.'
             )
             return
+        
+        if self.machine_state['first_acquisition']:
+            tk.messagebox.showerror(
+                title='Error',
+                message='Perform acquisition before saving file.'
+            )
+            return
 
         # Open the save file dialog
         file_path = tk.filedialog.asksaveasfilename(
-            defaultextension=".bin",  # Default file extension
+            defaultextension=".zip",  # Default file extension
             filetypes=[("Archive files", "*.zip"), ("All files", "*.*")],  # File types filter
             title="Save File As"
         )
@@ -256,12 +269,19 @@ class Application(tk.Frame):
         # If a file path is selected
         if file_path:
             try:
-                with zipfile.ZipFile(file_path, 'w') as savefile:
-                    savefile.write(self.tmp_savefile.name, 'data.bin')
-                    with NamedTemporaryFile('w') as metafile:
-                        metafile.write(json.dumps(self.metadata, indent=4))
-                        metafile.flush()
-                        savefile.write(metafile.name, 'metadata.txt')
+                def _save_file():
+                    with zipfile.ZipFile(file_path, 'w',
+                                        compression=zipfile.ZIP_DEFLATED,
+                                        compresslevel=6) as savefile:
+                        with NamedTemporaryFile('w') as metafile:
+                            metafile.write(json.dumps(self.metadata, indent=4))
+                            metafile.flush()
+                            savefile.write(metafile.name, 'metadata.txt')
+                        print(self.tmp_savefile.name)
+                        savefile.write(self.tmp_savefile.name, 'data.bin')
+
+                Thread(target=_save_file).start()
+
             except Exception as e:
                 tk.messagebox.showerror(
                     title='Error',
@@ -269,7 +289,7 @@ class Application(tk.Frame):
                 )
                 return
 
-            tk.messagebox.showinfo(title='File saved', message=f'File saved at {file_path}')
+            # tk.messagebox.showinfo(title='File saved', message=f'File saved at {file_path}')
             
             
 
