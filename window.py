@@ -1,4 +1,5 @@
 import json
+from multiprocessing import Process, Queue
 import os
 from tempfile import NamedTemporaryFile
 
@@ -7,24 +8,35 @@ import zipfile
 
 import matplotlib
 
-from popup_windows import LoadingPopup
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 
 from instrument import Intrument
-from worker_thread import WorkerThread
+from worker_thread import WorkerProcess, WorkerThread
 # from popup_windows import LoadingPopup
 
 import numpy as np
-from queue import Queue
 
 import time
 from numba import jit
-from threading import Thread
 
+import sys
+import pdb
 
+class ForkedPdb(pdb.Pdb):
+    """A Pdb subclass that may be used
+    from a forked multiprocessing child
+
+    """
+    def interaction(self, *args, **kwargs):
+        _stdin = sys.stdin
+        try:
+            sys.stdin = open('/dev/stdin')
+            pdb.Pdb.interaction(self, *args, **kwargs)
+        finally:
+            sys.stdin = _stdin
 
 class Application(tk.Frame):
     def __init__(self, master=None):
@@ -58,16 +70,11 @@ class Application(tk.Frame):
             'generator_name': None,
         }
 
-        # spawn worker thread for data fetching
-        self.acquisition_thread = WorkerThread(target_function=self.acquire_data)
-        self.acquisition_thread.start()
+        self.acquisition_worker = None
 
         # [WIP]
         self.generator_time     = np.linspace(-20, 0, num=21, dtype=np.int32)
         self.generator_voltage  = 1.2*np.ones(21)
-
-        # self.generator_thread = WorkerThread(target_function=self.burst_generation)
-        # self.generator_thread.start()
 
         self.update()
 
@@ -121,26 +128,29 @@ class Application(tk.Frame):
         self.canvas.get_tk_widget().grid(row=0,column=1)
         self.canvas.draw()
 
-    def acquire_data(self):
+    @staticmethod
+    def acquire_data(scope, xy_queue, tmp_savefile):
         """
         Acquires data from oscilloscope,
         enqueues it for plotting and saves it to binary file.
         """
-        if self.machine_state['acquisition_on']:
-            self.scope.measurement.initiate()
-            
-            xy = np.array(self.scope.fetch_data())
-            self.scope_queue.put(xy)
-            
-            # write y-vals of the waveform into file
-            with open(self.tmp_savefile.name, 'ab') as file:
-                file.write(xy[:,1].tobytes())
-            
-            del xy
+        scope.measurement.initiate()
+        
+        xy = np.array(scope.fetch_data())
+        xy_queue.put(xy)
+        
+
+        # write y-vals of the waveform into file
+        with open(tmp_savefile.name, 'ab') as file:
+            file.write(xy[:,1].tobytes())
+
+        del xy
+
     def plot(self):
         """
         Plots waveform data. This method is run only once as a first time plot.
         """
+
         xy = self.scope_queue.get(block=True)
         self.line_scope.set_xdata(xy[:,0]) # set x data
         self.line_scope.set_ydata(xy[:,1]) # set y data
@@ -158,24 +168,24 @@ class Application(tk.Frame):
         self.canvas.draw()
         self.machine_state['first_acquisition'] = False
         self.metadata['record_length'] = len(xy[:,1])
+    
     def update(self):
         """
         Update loop-like function for plots.
         """
-        def _update():
-            if self.scope_queue.qsize() != 0:
-                xy = self.scope_queue.get()
+        
+        if self.scope_queue.qsize() != 0:
+            xy = self.scope_queue.get()
 
-                if self.machine_state['generator_on']:
-                    self.update_voltage(xy)
-                
-                if self.machine_state['acquisition_on']:
-                    self.update_plot(xy)
-                
-                del xy
+            if self.machine_state['generator_on']:
+                self.update_voltage(xy)
+            
+            if self.machine_state['acquisition_on']:
+                self.update_plot(xy)
+            
+            del xy
 
         # updates plot in the background every 200 ms at most 
-        Thread(target=_update).start()
         self.master.after(200, self.update)
     
     def update_voltage(self, xy):
@@ -224,9 +234,17 @@ class Application(tk.Frame):
         # Same applies to the file write function.
 
         if not self.machine_state['acquisition_on']:
+            # updates metadata
             self.metadata['sample_rate'] = self.scope.acquisition.sample_rate
+
             self.tmp_savefile = NamedTemporaryFile()
-            print(self.tmp_savefile.name)
+            self.acquisition_worker =  WorkerProcess(
+                self.acquire_data,
+                self.scope, self.scope_queue, self.tmp_savefile
+            )
+            self.acquisition_worker.start()
+        else:
+            self.acquisition_worker.stop()
         
         self.machine_state['acquisition_on'] = not self.machine_state['acquisition_on']
 
@@ -269,18 +287,25 @@ class Application(tk.Frame):
         # If a file path is selected
         if file_path:
             try:
-                def _save_file():
-                    with zipfile.ZipFile(file_path, 'w',
+                @staticmethod
+                def _save_file(
+                    metadata,
+                    tmp_data_file,
+                    savefile_path
+                ):
+                    with zipfile.ZipFile(savefile_path, 'w',
                                         compression=zipfile.ZIP_DEFLATED,
-                                        compresslevel=6) as savefile:
-                        with NamedTemporaryFile('w') as metafile:
-                            metafile.write(json.dumps(self.metadata, indent=4))
-                            metafile.flush()
-                            savefile.write(metafile.name, 'metadata.txt')
-                        print(self.tmp_savefile.name)
-                        savefile.write(self.tmp_savefile.name, 'data.bin')
+                                        compresslevel=6) as archive_file:
+                        with NamedTemporaryFile('w') as metadata_file:
+                            metadata_file.write(json.dumps(metadata, indent=4))
+                            metadata_file.flush()
+                            archive_file.write(metadata_file.name, 'metadata.txt')
 
-                Thread(target=_save_file).start()
+                        archive_file.write(tmp_data_file.name, 'data.bin')
+                    print('Data Saved in:', savefile_path)
+                    
+                Process(target=_save_file,
+                        args=(self.metadata, self.tmp_savefile, file_path, )).start()
 
             except Exception as e:
                 tk.messagebox.showerror(
@@ -302,17 +327,23 @@ class Application(tk.Frame):
         self.machine_state['acquisition_on'] = False
         self.machine_state['generator_on'] = False
         
-        self.master.after_cancel(self.update)
-        # Stop the worker thread
-        self.acquisition_thread.stop()
-        self.acquisition_thread.join()  # Wait for the thread to finish
+        
+        
+        try:
+            self.master.after_cancel(self.update)
+            # Stop the worker thread
+            self.acquisition_worker.stop()
+        except:
+            pass
+
 
         # self.generator_thread.stop()
         # self.generator_thread.join()  # Wait for the thread to finish
 
+
+        # this crashes WorkerProcess on exit
+        # if u care fix it
         self.scope.close()
         # self.generator.close()
-        self.master.quit()  # Close the Tkinter window
-
-        if os.path.exists(self.tmp_savefile.name):
-            os.remove(self.tmp_savefile.name)
+        self.master.quit()
+        self.master.destroy()
