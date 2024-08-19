@@ -14,7 +14,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 
 from instrument import Intrument
-from worker_thread import WorkerProcess, WorkerThread
+from worker_thread import WorkerProcess
 # from popup_windows import LoadingPopup
 
 import numpy as np
@@ -331,19 +331,23 @@ class Application(tk.Frame):
         
         try:
             self.master.after_cancel(self.update)
-            # Stop the worker thread
-            self.acquisition_worker.stop()
         except:
             pass
+        
+        self.master.quit()
+        self.master.destroy()
+
+        # Stop the worker thread
+        self.acquisition_worker.stop()
+        self.acquisition_worker.join()
+        
+        self.scope.close()
 
 
         # self.generator_thread.stop()
         # self.generator_thread.join()  # Wait for the thread to finish
 
 
-        # this crashes WorkerProcess on exit
-        # if u care fix it
-        self.scope.close()
+
         # self.generator.close()
-        self.master.quit()
-        self.master.destroy()
+
