@@ -1,21 +1,21 @@
-import json
-from multiprocessing import Process, Queue
-import os
+from multiprocessing import Queue
 from tempfile import NamedTemporaryFile
 
+
+
+from save_file import append_binary_file, write_archive
+
 import tkinter as tk
-import zipfile
 
 import matplotlib
-
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 
 from instrument import Intrument
-from worker_thread import WorkerProcess
-# from popup_windows import LoadingPopup
+from worker_thread import ConsumerProcess, WorkerProcess
+
 
 import numpy as np
 
@@ -70,13 +70,19 @@ class Application(tk.Frame):
             'generator_name': None,
         }
 
-        self.acquisition_worker = None
+        self.acquisition_process = None
+        self.generator_process = None
+        self.misc_process = ConsumerProcess(start=True)
 
         # [WIP]
         self.generator_time     = np.linspace(-20, 0, num=21, dtype=np.int32)
         self.generator_voltage  = 1.2*np.ones(21)
-
+        
+        
+        self.update_cancel_name = None
         self.update()
+        
+
 
     def createWidgets(self):
         self.init_figure()
@@ -129,7 +135,7 @@ class Application(tk.Frame):
         self.canvas.draw()
 
     @staticmethod
-    def acquire_data(scope, xy_queue, tmp_savefile):
+    def acquire_data(scope, xy_queue):
         """
         Acquires data from oscilloscope,
         enqueues it for plotting and saves it to binary file.
@@ -138,11 +144,6 @@ class Application(tk.Frame):
         
         xy = np.array(scope.fetch_data())
         xy_queue.put(xy)
-        
-
-        # write y-vals of the waveform into file
-        with open(tmp_savefile.name, 'ab') as file:
-            file.write(xy[:,1].tobytes())
 
         del xy
 
@@ -174,19 +175,22 @@ class Application(tk.Frame):
         Update loop-like function for plots.
         """
         
-        if self.scope_queue.qsize() != 0:
+        if not self.scope_queue.empty():
             xy = self.scope_queue.get()
 
+            self.misc_process.schedule_process(append_binary_file,
+                                               self.tmp_savefile.name, xy[:, 1])
+            
             if self.machine_state['generator_on']:
                 self.update_voltage(xy)
-            
+
             if self.machine_state['acquisition_on']:
                 self.update_plot(xy)
             
             del xy
 
         # updates plot in the background every 200 ms at most 
-        self.master.after(200, self.update)
+        self.update_cancel_name = self.master.after(200, self.update)
     
     def update_voltage(self, xy):
         """
@@ -238,13 +242,13 @@ class Application(tk.Frame):
             self.metadata['sample_rate'] = self.scope.acquisition.sample_rate
 
             self.tmp_savefile = NamedTemporaryFile()
-            self.acquisition_worker =  WorkerProcess(
+            self.acquisition_process =  WorkerProcess(
                 self.acquire_data,
-                self.scope, self.scope_queue, self.tmp_savefile
+                self.scope, self.scope_queue
             )
-            self.acquisition_worker.start()
+            self.acquisition_process.start()
         else:
-            self.acquisition_worker.stop()
+            self.acquisition_process.stop()
         
         self.machine_state['acquisition_on'] = not self.machine_state['acquisition_on']
 
@@ -286,26 +290,9 @@ class Application(tk.Frame):
         
         # If a file path is selected
         if file_path:
-            try:
-                @staticmethod
-                def _save_file(
-                    metadata,
-                    tmp_data_file,
-                    savefile_path
-                ):
-                    with zipfile.ZipFile(savefile_path, 'w',
-                                        compression=zipfile.ZIP_DEFLATED,
-                                        compresslevel=6) as archive_file:
-                        with NamedTemporaryFile('w') as metadata_file:
-                            metadata_file.write(json.dumps(metadata, indent=4))
-                            metadata_file.flush()
-                            archive_file.write(metadata_file.name, 'metadata.txt')
-
-                        archive_file.write(tmp_data_file.name, 'data.bin')
-                    print('Data Saved in:', savefile_path)
-                    
-                Process(target=_save_file,
-                        args=(self.metadata, self.tmp_savefile, file_path, )).start()
+            try:    
+                self.misc_process.schedule_process(write_archive,
+                        self.metadata, self.tmp_savefile.name, file_path, )
 
             except Exception as e:
                 tk.messagebox.showerror(
@@ -324,13 +311,14 @@ class Application(tk.Frame):
         Stopping the plot update function, data fetch worker,
         closing connection to the scope and quiting the programm.
         """
-        self.machine_state['acquisition_on'] = False
-        self.machine_state['generator_on'] = False
-        
-        
+        if self.machine_state['acquisition_on']:
+            self.toggle_acquisition()
+
+        if self.machine_state['generator_on']:
+            self.toggle_generator()
         
         try:
-            self.master.after_cancel(self.update)
+            self.master.after_cancel(self.update_cancel_name)
         except:
             pass
         
@@ -338,9 +326,13 @@ class Application(tk.Frame):
         self.master.destroy()
 
         # Stop the worker thread
-        self.acquisition_worker.stop()
-        self.acquisition_worker.join()
+        self.misc_process.stop()
+
+        # join workers
+        # self.acquisition_process.join()
+        self.misc_process.join()
         
+
         self.scope.close()
 
 
