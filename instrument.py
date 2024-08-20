@@ -1,5 +1,5 @@
 import usbtmc
-from ivi.agilent import agilentMSO9404A
+from agilentMSO9404A import agilentMSO9404A
 
 class Intrument(agilentMSO9404A):
     '''
