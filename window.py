@@ -13,8 +13,8 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 
-from instrument import Scope
-from worker_thread import ConsumerProcess, WorkerProcess
+from instruments import Scope
+from workers import ConsumerProcess, WorkerProcess
 
 
 import numpy as np
