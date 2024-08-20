@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 
-from instrument import Intrument
+from instrument import Scope
 from worker_thread import ConsumerProcess, WorkerProcess
 
 
@@ -48,7 +48,7 @@ class Application(tk.Frame):
         self.master.protocol("WM_DELETE_WINDOW", self.on_closing)
 
         # connect instrument
-        self.scope = Intrument()
+        self.scope = Scope()
         # instrument name known only after setting connection
         self.ax_scope.set_title(self.scope.instrument_name)
         # setup data scope_queue for y-values of fetched waveforms

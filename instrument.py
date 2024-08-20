@@ -1,7 +1,7 @@
 import usbtmc
 from agilentMSO9404A import agilentMSO9404A
 
-class Intrument(agilentMSO9404A):
+class Scope(agilentMSO9404A):
     '''
     Initiates communication with agilentMSO9404A oscilloscope.
     '''
@@ -16,3 +16,10 @@ class Intrument(agilentMSO9404A):
         1 on phisical instrument).
         '''
         return self.channels[0].measurement.fetch_waveform()
+
+class Generator():
+    def __init__(self) -> None:
+        pass
+
+    def set_peak_voltage(peak_voltage : float) -> None:
+        pass
