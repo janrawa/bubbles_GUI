@@ -6,6 +6,12 @@ import numpy
 
 
 def write_archive(metadata : dict, source_data_name : str, dest_archive : str):
+    metadata['descriptnion'] = '''Data recorded from a data gathering session,
+    can be found inside data.bin file. It is a binary file that consists of
+    oscilloscope readouts concatenated one after the other. To read this file
+    you can use numpy -> `numpy.fromfile()` and than reshape it ->
+    '.reshape((-1, <record_length>))'. record_length can be found in this
+    metadata file.'''
     with zipfile.ZipFile(dest_archive, 'w',
                         compression=zipfile.ZIP_DEFLATED,
                         compresslevel=6) as archive_file:
