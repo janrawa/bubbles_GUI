@@ -14,7 +14,7 @@ def write_archive(metadata : dict, source_data_name : str, dest_archive : str):
     metadata file.'''
     with zipfile.ZipFile(dest_archive, 'w',
                         compression=zipfile.ZIP_DEFLATED,
-                        compresslevel=6) as archive_file:
+                        compresslevel=9) as archive_file:
         with NamedTemporaryFile('w') as metadata_file:
             metadata_file.write(json.dumps(metadata, indent=4))
             metadata_file.flush()
