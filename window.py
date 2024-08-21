@@ -65,9 +65,15 @@ class Application(tk.Frame):
         # creates temporary file for storing raw data
         self.tmp_savefile = None
         self.metadata = {
-            'scope_name'    : self.scope.instrument_name,
-            'sample_rate'   : self.scope.acquisition.sample_rate,
-            'generator_name': None,
+            'scope' : {
+                'scope_name'    : self.scope.instrument_name,
+                'sample_rate'   : self.scope.acquisition.sample_rate,
+                'record_length' : None
+            },
+            'generator' : {
+                'generator_name': 'Not Implemented',
+            },
+            'descriptnion' : None
         }
 
         self.acquisition_process = None
@@ -168,7 +174,7 @@ class Application(tk.Frame):
 
         self.canvas.draw()
         self.machine_state['first_acquisition'] = False
-        self.metadata['record_length'] = len(xy[:,1])
+        self.metadata['scope']['record_length'] = len(xy[:,1])
     
     def update(self):
         """
@@ -239,7 +245,7 @@ class Application(tk.Frame):
 
         if not self.machine_state['acquisition_on']:
             # updates metadata
-            self.metadata['sample_rate'] = self.scope.acquisition.sample_rate
+            self.metadata['scope']['sample_rate'] = self.scope.acquisition.sample_rate
 
             self.tmp_savefile = NamedTemporaryFile()
             self.acquisition_process =  WorkerProcess(
