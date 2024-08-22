@@ -1,10 +1,6 @@
 from multiprocessing import Queue
 from tempfile import NamedTemporaryFile
 
-
-
-from save_file import append_binary_file, write_archive
-
 import tkinter as tk
 
 import matplotlib
@@ -13,32 +9,11 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 
-from instruments import Generator, Scope
+from save_file import append_binary_file, write_archive
+from instruments import Generator, Scope, fetch_enqueue_data
 from workers import ConsumerProcess, WorkerProcess
 
-
-import numpy as np
-
-import time
-from numba import jit
 import samplerate
-
-
-import sys
-import pdb
-
-class ForkedPdb(pdb.Pdb):
-    """A Pdb subclass that may be used
-    from a forked multiprocessing child
-
-    """
-    def interaction(self, *args, **kwargs):
-        _stdin = sys.stdin
-        try:
-            sys.stdin = open('/dev/stdin')
-            pdb.Pdb.interaction(self, *args, **kwargs)
-        finally:
-            sys.stdin = _stdin
 
 class Application(tk.Frame):
     def __init__(self, master=None):
@@ -86,10 +61,6 @@ class Application(tk.Frame):
         self.generator_process = None
         self.misc_process = ConsumerProcess(start=True)
 
-        # [WIP]
-        self.generator_time     = np.linspace(-20, 0, num=21, dtype=np.int32)
-        self.generator_voltage  = 1.2*np.ones(21)
-        
         self.settings = {
             'pressure' : 0.28
         }
@@ -153,19 +124,6 @@ class Application(tk.Frame):
         self.canvas.get_tk_widget().grid(row=0,column=1)
         self.canvas.draw()
 
-    @staticmethod
-    def acquire_data(scope, xy_queue):
-        """
-        Acquires data from oscilloscope,
-        enqueues it for plotting and saves it to binary file.
-        """
-        scope.measurement.initiate()
-        
-        xy = np.array(scope.fetch_data())
-        xy_queue.put(xy)
-
-        del xy
-
     def plot(self):
         """
         Plots waveform data. This method is run only once as a first time plot.
@@ -183,8 +141,8 @@ class Application(tk.Frame):
         self.ax_scope.autoscale_view()  # Rescale the view
 
 
-        self.line_gen.set_xdata(self.generator_time) # set x data
-        self.line_gen.set_ydata(self.generator_voltage) # set y data
+        # self.line_gen.set_xdata(self.generator_time) # set x data
+        # self.line_gen.set_ydata(self.generator_voltage) # set y data
 
         self.ax_gen.relim()  # Recompute the data limits
         self.ax_gen.autoscale_view()  # Rescale the view
@@ -206,7 +164,8 @@ class Application(tk.Frame):
                                                self.tmp_savefile.name, xy[:, 1])
             
             if self.machine_state['generator_on']:
-                self.update_voltage(xy)
+                # self.update_voltage(xy)
+                pass
 
             if self.machine_state['acquisition_on']:
                 self.update_plot(xy)
@@ -223,23 +182,7 @@ class Application(tk.Frame):
         Description:
             Adjcusts generator voltage based on oscilloscope readout.
         """
-        @jit
-        def calculate_voltage(voltatage_register, desired_voltage):
-            delta_voltage = .25*abs(voltatage_register[-1]-desired_voltage)
-            # takes all but the first element and adds a new one at the end
-            for i in range(len(voltatage_register)-1):
-                voltatage_register[i] = voltatage_register[i+1]
-            voltatage_register[-1] = voltatage_register[-2] + delta_voltage
-            return voltatage_register
-        
-        # [WIP]
-        @jit
-        def get_desired_voltage(xy):
-            return 1.24
 
-        self.generator_voltage = calculate_voltage(self.generator_voltage, get_desired_voltage(xy))
-        # [WIP] send new voltage to generator
-        time.sleep(1)
 
     def update_plot(self, xy):
         """
@@ -250,7 +193,7 @@ class Application(tk.Frame):
         y = samplerate.resample(xy[:,1], ratio, 'sinc_best')
 
         self.line_scope.set_ydata(y)
-        self.line_gen.set_ydata(self.generator_voltage)
+        # self.line_gen.set_ydata(self.generator_voltage)
         
         self.canvas.draw()
     
@@ -271,7 +214,7 @@ class Application(tk.Frame):
 
             self.tmp_savefile = NamedTemporaryFile()
             self.acquisition_process =  WorkerProcess(
-                self.acquire_data,
+                fetch_enqueue_data,
                 self.scope, self.scope_queue
             )
             self.acquisition_process.start()

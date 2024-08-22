@@ -1,5 +1,6 @@
 import usbtmc
 from agilentMSO9404A import agilentMSO9404A
+from numba import jit
 
 class Scope(agilentMSO9404A):
     '''
@@ -27,3 +28,20 @@ class Generator:
     
     def close(self):
         self.instr.close()
+
+from numpy import array
+def fetch_enqueue_data(scope, xy_queue):
+    """
+    Acquires data from oscilloscope,
+    enqueues it for plotting and saves it to binary file.
+    """
+    scope.measurement.initiate()
+    
+    xy = array(scope.fetch_data())
+    xy_queue.put(xy)
+
+    del xy
+
+@jit
+def get_voltage(target_pressure):
+    pass
