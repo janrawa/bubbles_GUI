@@ -34,3 +34,4 @@ where the vendor and product ID must go in hex and without the 0x. For example l
 * numpy==2.1.0
 * python_ivi==0.14.9
 * python_usbtmc==0.8
+* samplerate==0.2.1
