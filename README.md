@@ -8,6 +8,20 @@ If you need to connect diffrent device feel free to edit `instrument.py` file.
 If you cannot access your device without running your script as root follow the link: [Python USBTMC Readme](http://alexforencich.com/wiki/en/python-usbtmc/readme)
 or are running it on Windows (untested).
 
+### In case of issues try this
+https://stackoverflow.com/questions/50625363/usberror-errno-13-access-denied-insufficient-permissions
+
+1. Add line to udev file:
+```sudo echo 'UBSYSTEMS=="usb", ATTRS{idVendor}=="c251", ATTRS{idProduct}=="2201" GROUP="users", MODE="0666"' >> /etc/udev/rules.d/50-myusb.rules```
+where the vendor and product ID must go in hex and without the 0x. For example lsusb in my case produced Bus 001 Device 042: ID c251:2201 Keil Software, Inc. LASER Driver IJS and so my vendor ID is c251 and product ID is 2201.
+
+2. Refresh udev
+
+```sudo udevadm control --reload-rules && sudo udevadm trigger```
+
+3. Disconnect and re-connect the USB device.
+
+
 ## Using the programm
 1. Turn oscilloscope on.
 2. Turn generator on.
