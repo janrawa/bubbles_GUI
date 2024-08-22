@@ -51,9 +51,10 @@ class Application(tk.Frame):
 
         # connect instrument
         self.scope = Scope()
-        # self.generator = Generator()
+        self.gen   = Generator()
         # instrument name known only after setting connection
         self.ax_scope.set_title(self.scope.instrument_name)
+        self.ax_gen.set_title(self.gen.instrument_name)
         # setup data scope_queue for y-values of fetched waveforms
         self.scope_queue = Queue()
 
@@ -89,6 +90,10 @@ class Application(tk.Frame):
         self.generator_time     = np.linspace(-20, 0, num=21, dtype=np.int32)
         self.generator_voltage  = 1.2*np.ones(21)
         
+        self.settings = {
+            'pressure' : 0.28
+        }
+
         
         self.update_cancel_name = None
         self.update()
@@ -121,13 +126,16 @@ class Application(tk.Frame):
         toggle_menu.add_checkbutton(label='Generator Autotuner',
                                          command=self.toggle_generator)
         
+        settings = menu_bar.add_command(label='Settings',
+                                        command=self.settings)
+        
         
     def init_figure(self):
         """
         Initializes figure, converts it into canvas
         and does a preliminary draw().
         """
-        fig    = plt.figure(figsize=(8,8))
+        fig    = plt.figure(tight_layout=True, figsize=(8,8))
         self.ax_scope, self.ax_gen = fig.subplots(nrows=2)
         self.line_scope,  = self.ax_scope.plot([],[],lw=.5, antialiased=False,
                                                rasterized=True)
@@ -322,7 +330,24 @@ class Application(tk.Frame):
                 return
 
             # tk.messagebox.showinfo(title='File saved', message=f'File saved at {file_path}')
-            
+    def settings(self):
+        popup = tk.Toplevel(self.master)
+        popup.title('Settings')
+
+        tk.Label(popup, text='Set target values. Generator voltage will adjust '
+                 'itself to meet those criteria.').grid(column=0, row=0,
+                                                       columnspan=3)
+
+
+        def _set_pressure():
+            self.settings['pressure'] = pressure.get()
+                
+        irow = 1
+        tk.Label (popup, text='Peak Pressure [MPa]').grid(column=0, row=irow)
+        pressure = tk.Scale(popup, from_=0.40, to=0.18, resolution=.01)
+        pressure.grid(column=1, row=irow)
+        pressure.set(0.28)
+        tk.Button(popup, text='Set Pressure', command=_set_pressure).grid(column=2, row=irow)
             
 
     def on_closing(self):
