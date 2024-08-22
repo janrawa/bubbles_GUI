@@ -322,12 +322,5 @@ class Application(tk.Frame):
         
 
         self.scope.close()
-
-
-        # self.generator_thread.stop()
-        # self.generator_thread.join()  # Wait for the thread to finish
-
-
-
-        # self.generator.close()
+        # self.gen.close()
 
