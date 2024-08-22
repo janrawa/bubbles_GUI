@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 
-from instruments import Scope
+from instruments import Generator, Scope
 from workers import ConsumerProcess, WorkerProcess
 
 
@@ -21,6 +21,8 @@ import numpy as np
 
 import time
 from numba import jit
+import samplerate
+
 
 import sys
 import pdb
@@ -49,6 +51,7 @@ class Application(tk.Frame):
 
         # connect instrument
         self.scope = Scope()
+        # self.generator = Generator()
         # instrument name known only after setting connection
         self.ax_scope.set_title(self.scope.instrument_name)
         # setup data scope_queue for y-values of fetched waveforms
@@ -75,6 +78,8 @@ class Application(tk.Frame):
             },
             'descriptnion' : None
         }
+
+        self.number_of_plot_points = 200000
 
         self.acquisition_process = None
         self.generator_process = None
@@ -157,10 +162,15 @@ class Application(tk.Frame):
         """
         Plots waveform data. This method is run only once as a first time plot.
         """
-
         xy = self.scope_queue.get(block=True)
-        self.line_scope.set_xdata(xy[:,0]) # set x data
-        self.line_scope.set_ydata(xy[:,1]) # set y data
+
+        ratio = self.number_of_plot_points/len(xy[:,0])
+
+        x = samplerate.resample(xy[:,0], ratio, 'sinc_best')
+        y = samplerate.resample(xy[:,1], ratio, 'sinc_best')
+
+        self.line_scope.set_xdata(x) # set x data
+        self.line_scope.set_ydata(y) # set y data
         self.ax_scope.relim()  # Recompute the data limits
         self.ax_scope.autoscale_view()  # Rescale the view
 
@@ -228,7 +238,10 @@ class Application(tk.Frame):
         Updates plot values from from scope_queue.
         After running sets up another update in 200 ms.
         """
-        self.line_scope.set_ydata(xy[:,1])
+        ratio = self.number_of_plot_points/len(xy[:,0])
+        y = samplerate.resample(xy[:,1], ratio, 'sinc_best')
+
+        self.line_scope.set_ydata(y)
         self.line_gen.set_ydata(self.generator_voltage)
         
         self.canvas.draw()
@@ -245,7 +258,8 @@ class Application(tk.Frame):
 
         if not self.machine_state['acquisition_on']:
             # updates metadata
-            self.metadata['scope']['sample_rate'] = self.scope.acquisition.sample_rate
+            self.metadata['scope']['sample_rate'] = self.scope.acquisition \
+                .sample_rate
 
             self.tmp_savefile = NamedTemporaryFile()
             self.acquisition_process =  WorkerProcess(
