@@ -43,5 +43,5 @@ def fetch_enqueue_data(scope, xy_queue):
     del xy
 
 @jit
-def get_voltage(target_pressure):
+def peak_voltage(target_pressure):
     pass
