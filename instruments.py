@@ -17,9 +17,13 @@ class Scope(agilentMSO9404A):
         '''
         return self.channels[0].measurement.fetch_waveform()
 
-class Generator():
-    def __init__(self) -> None:
-        pass
+class Generator:
+    def __init__(self, vendor_id=0x0699, product_id=0x0343):
+        self.instr = usbtmc.Instrument(vendor_id, product_id)
+        self.instrument_name = self.instr.ask('*IDN?')
 
-    def set_peak_voltage(peak_voltage : float) -> None:
-        pass
+    def set_peak_voltage(self, peak_voltage : float) -> None:
+        self.instr.write(f':source1:voltage:amplitude {peak_voltage}')
+    
+    def close(self):
+        self.instr.close()
