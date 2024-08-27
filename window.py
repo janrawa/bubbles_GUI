@@ -47,12 +47,12 @@ class Application(tk.Frame):
             'scope' : {
                 'scope_name'    : self.scope.instrument_name,
                 'sample_rate'   : self.scope.acquisition.sample_rate,
-                'record_length' : None
+                'record_length' : None,
             },
             'generator' : {
-                'generator_name': 'Not Implemented',
+                'generator_name': self.gen.instrument_name,
             },
-            'descriptnion' : None
+            'descriptnion' : None,
         }
 
         self.number_of_plot_points = 200000
