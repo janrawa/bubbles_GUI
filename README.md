@@ -12,15 +12,17 @@ or are running it on Windows (untested).
 https://stackoverflow.com/questions/50625363/usberror-errno-13-access-denied-insufficient-permissions
 
 1. Add line to udev file:
-```sudo echo '# USBTMC instruments \
+```
+sudo echo '# USBTMC instruments \
 # Agilent MSO7104 \
 SUBSYSTEMS=="usb", ACTION=="add", ATTRS{idVendor}=="0957", ATTRS{idProduct}=="900d", GROUP="usbtmc", MODE="0666" \
 # Tektronix AFG3102 \
 SUBSYSTEMS=="usb", ACTION=="add", ATTRS{idVendor}=="0699", ATTRS{idProduct}=="0343", GROUP="usbtmc", MODE="0660" \
 # Devices \
 KERNEL=="usbtmc/*",       MODE="0660", GROUP="usbtmc" \
-KERNEL=="usbtmc[0-9]*",   MODE="0660", GROUP="usbtmc"' >> /etc/udev/rules.d/50-myusb.rules```
-where the vendor and product ID must go in hex and without the 0x. For example lsusb in my case produced Bus 001 Device 042: ID c251:2201 Keil Software, Inc. LASER Driver IJS and so my vendor ID is c251 and product ID is 2201.
+KERNEL=="usbtmc[0-9]*",   MODE="0660", GROUP="usbtmc"' >> /etc/udev/rules.d/50-myusb.rules
+```
+where the vendor and product ID must go in hex and without the 0x.
 
 2. Refresh udev
 
@@ -32,13 +34,17 @@ where the vendor and product ID must go in hex and without the 0x. For example l
 ## Using the programm
 1. Turn oscilloscope on.
 2. Turn generator on.
-3. Make sure that both devices are plugged in to controller PC.
+3. Make sure that both devices are plugged in to controller PC and can be detected using `lsusb`.
 4. Run the script `python main.py`.
 
 ## Dependencies
+### Pip
 * matplotlib==3.9.2
 * numba==0.60.0
 * numpy==2.1.0
 * python_ivi==0.14.9
 * python_usbtmc==0.8
 * samplerate==0.2.1
+### OS
+#### Linux based OS is necessary due to shared memory between processes not working on windows
+* Tkinter 8.6.12
