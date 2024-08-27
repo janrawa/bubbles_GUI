@@ -11,24 +11,26 @@ or are running it on Windows (untested).
 ### In case of issues try this
 https://stackoverflow.com/questions/50625363/usberror-errno-13-access-denied-insufficient-permissions
 
-1. Add line to udev file:
+1. Run line to create usb- udev file:
+```console
+sudo echo -e '# USBTMC instruments
+# Agilent MSO7104
+SUBSYSTEMS=="usb", ACTION=="add", ATTRS{idVendor}=="0957", ATTRS{idProduct}=="900d", GROUP="usbtmc", MODE="0666"
+# Tektronix AFG3102
+SUBSYSTEMS=="usb", ACTION=="add", ATTRS{idVendor}=="0699", ATTRS{idProduct}=="0343", GROUP="usbtmc", MODE="0660"
+# Devices
+KERNEL=="usbtmc/*",       MODE="0660", GROUP="usbtmc"
+KERNEL=="usbtmc[0-9]*",   MODE="0660", GROUP="usbtmc"' >> /etc/udev/rules.d/usbtmc.rules
 ```
-sudo echo '# USBTMC instruments \
-# Agilent MSO7104 \
-SUBSYSTEMS=="usb", ACTION=="add", ATTRS{idVendor}=="0957", ATTRS{idProduct}=="900d", GROUP="usbtmc", MODE="0666" \
-# Tektronix AFG3102 \
-SUBSYSTEMS=="usb", ACTION=="add", ATTRS{idVendor}=="0699", ATTRS{idProduct}=="0343", GROUP="usbtmc", MODE="0660" \
-# Devices \
-KERNEL=="usbtmc/*",       MODE="0660", GROUP="usbtmc" \
-KERNEL=="usbtmc[0-9]*",   MODE="0660", GROUP="usbtmc"' >> /etc/udev/rules.d/50-myusb.rules
-```
-where the vendor and product ID must go in hex and without the 0x.
+    where the vendor and product ID must go in hex and without the 0x.
 
 2. Refresh udev
 
-```sudo udevadm control --reload-rules && sudo udevadm trigger```
+```console
+sudo udevadm control --reload-rules && sudo udevadm trigger
+```
 
-3. Disconnect and re-connect the USB device.
+3. <span style="color: red;">Disconnect and re-connect the USB device.</span>
 
 
 ## Using the programm
