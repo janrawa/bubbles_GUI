@@ -3,3 +3,4 @@ numba==0.60.0
 python_ivi==0.14.9
 python_usbtmc==0.8
 samplerate==0.2.1
+pyusb==1.2.1
