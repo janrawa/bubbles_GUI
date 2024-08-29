@@ -1,9 +1,7 @@
-import multiprocessing
+import multiprocess
 import queue
-import threading
-import time
 
-class WorkerProcess(multiprocessing.Process):
+class WorkerProcess(multiprocess.Process):
     """
     Constantly running processes, that start and finish on rare ocations ex.
     begining data acquisition from an oscilloscope.
@@ -13,7 +11,7 @@ class WorkerProcess(multiprocessing.Process):
         self.target_function = target_function
         self.args = args
         self.kwargs = kwargs
-        self.stop_event = multiprocessing.Event()
+        self.stop_event = multiprocess.Event()
 
     def run(self):
         while not self.stop_event.is_set():
@@ -23,15 +21,15 @@ class WorkerProcess(multiprocessing.Process):
     def stop(self):
         self.stop_event.set()
 
-class ConsumerProcess(multiprocessing.Process):
+class ConsumerProcess(multiprocess.Process):
     """
     Short lasting processes that are run on rare ocations ex.
     saving gathered data to an archive file.
     """
     def __init__(self, start):
         super().__init__()
-        self.process_queue = multiprocessing.Queue()
-        self.stop_event = multiprocessing.Event()
+        self.process_queue = multiprocess.Queue()
+        self.stop_event = multiprocess.Event()
 
         if start:
             self.start()

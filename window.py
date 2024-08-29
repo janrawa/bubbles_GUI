@@ -1,4 +1,4 @@
-from multiprocessing import Queue
+from multiprocess import Queue
 from tempfile import NamedTemporaryFile
 
 import tkinter as tk
@@ -351,5 +351,5 @@ class Application(tk.Frame):
         
 
         self.scope.close()
-        # self.gen.close()
+        self.gen.close()
 
