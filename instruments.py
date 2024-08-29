@@ -25,6 +25,7 @@ class Generator:
 
 
     def __setattr__(self, name: str, value: Any) -> None:
+        # specific procedures to do before setting variable
         match name:
             case 'amplitude':
                 # make sure it's float
@@ -35,8 +36,6 @@ class Generator:
                         raise TypeError(f"Attribute '{name}' must be a float or convertible to float.")
 
                 self.instr.write(f':source1:voltage:amplitude {value}')
-                super().__setattr__(name, value)
-
             case 'state':
                 # make sure it's bool
                 if not isinstance(value, bool):
@@ -46,26 +45,25 @@ class Generator:
                         raise TypeError(f"Attribute '{name}' must be a bool or convertible to bool.")
 
                 if value:
-                    self.instr.write(f':output1:state on')
+                    self.instr.write(':output1:state on')
                 else:
-                    self.instr.write(f':output1:state off')
-                
-                super().__setattr__(name, value)
-            
-            case _:
-                # default behaviour
-                super().__setattr__(name, value)
+                    self.instr.write(':output1:state off')
+
+        super().__setattr__(name, value)
     
     def __getattribute__(self, name: str) -> Any:
+        # specific procedures to do before returning variable
         match name:
             case 'frequency':
-                self.frequency=self.instr.ask(f':source1:frequency?')
-                super().__getattribute__(name)
+                self.frequency=float(self.instr.ask(':source1:frequency?'))
             case 'instrument_name':
                 self.instrument_name=self.instr.ask('*IDN?')
-                super().__getattribute__(name)
-            case _:
-                return super().__getattribute__(name)
+            case 'amplitude':
+                self.amplitude=float(self.instr.ask(':source1:voltage:amplitude?'))
+            case 'state':
+                self.state=True if self.instr.ask(':output1:state?') == '1' else False
+        
+        return super().__getattribute__(name)
 
     def close(self):
         self.instr.close()
