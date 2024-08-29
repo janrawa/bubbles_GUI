@@ -1,5 +1,8 @@
 from numpy import array, searchsorted, sum, abs
 
+def clip(x, vmin, vmax):
+    return max(vmin, min(x, vmax))
+
 def subharmonics_present(xf: array, yf: array, f0: float):
     # @njit(float64(float64[:], float64[:], float64))
     def close_far_field_integral_fraction(xf: array, yf: array, f: float):

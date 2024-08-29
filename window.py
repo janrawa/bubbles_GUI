@@ -4,6 +4,7 @@ from tempfile import NamedTemporaryFile
 import tkinter as tk
 
 import matplotlib
+from scipy.fft import fft, fftfreq
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -12,10 +13,12 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from save_file import append_binary_file, write_archive
 from instruments import Generator, Scope, fetch_enqueue_data
 from workers import ConsumerProcess, WorkerProcess
+from generator_safety import clip, subharmonics_present
 
 import samplerate
 
 class Application(tk.Frame):
+    MICROPHONE_SENSITIVITY_CONST = 1.0
     def __init__(self, master=None):
         tk.Frame.__init__(self, master)
         self.createWidgets()
@@ -182,6 +185,32 @@ class Application(tk.Frame):
         Description:
             Adjcusts generator voltage based on oscilloscope readout.
         """
+        N = len(xy[:,0])
+        T = 1/self.metadata['scope']['samplerate']
+
+        yf = fft(xy[:,1])
+        xf = fftfreq(N, T)[:N//2]
+
+        subharmonics = subharmonics_present(xf, yf, self.gen.frequency)
+
+        # if any subharmonics are detected decreese voltage by 0.1 V
+        # and exit the function
+        for val, truth in list(subharmonics.values()):
+            if truth:
+                self.gen.amplitude = self.gen.amplitude - 0.1
+                return
+        
+        # calculate target voltage based on target pressure
+        target_voltage=self.settings['pressure']*self.MICROPHONE_SENSITIVITY_CONST
+        # calculate voltage diffrence
+        delta_voltage = target_voltage-self.gen.amplitude
+
+        # voltage can be set in range (0.01, 1.0)
+        self.gen.amplitude = clip(
+            # maximum change range (-0.01, 0.01)
+            clip(self.gen.amplitude+delta_voltage, -0.01, 0.01),
+            0.01, 1.0
+        )
 
 
     def update_plot(self, xy):
