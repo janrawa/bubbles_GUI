@@ -19,9 +19,9 @@ class Scope(agilentMSO9404A):
         '''
         return self.channels[0].measurement.fetch_waveform()
 
-class Generator:
+class Generator(usbtmc.Instrument):
     def __init__(self, vendor_id=0x0699, product_id=0x0343):
-        self.instr = usbtmc.Instrument(vendor_id, product_id)
+        super().__init__(vendor_id, product_id)
 
 
     def __setattr__(self, name: str, value: Any) -> None:
@@ -35,7 +35,7 @@ class Generator:
                     except ValueError:
                         raise TypeError(f"Attribute '{name}' must be a float or convertible to float.")
 
-                self.instr.write(f':source1:voltage:amplitude {value}')
+                self.write(f':source1:voltage:amplitude {value}')
             case 'state':
                 # make sure it's bool
                 if not isinstance(value, bool):
@@ -45,9 +45,9 @@ class Generator:
                         raise TypeError(f"Attribute '{name}' must be a bool or convertible to bool.")
 
                 if value:
-                    self.instr.write(':output1:state on')
+                    self.write(':output1:state on')
                 else:
-                    self.instr.write(':output1:state off')
+                    self.write(':output1:state off')
 
         super().__setattr__(name, value)
     
@@ -55,18 +55,18 @@ class Generator:
         # specific procedures to do before returning variable
         match name:
             case 'frequency':
-                self.frequency=float(self.instr.ask(':source1:frequency?'))
+                self.frequency=float(self.ask(':source1:frequency?'))
             case 'instrument_name':
-                self.instrument_name=self.instr.ask('*IDN?')
+                self.instrument_name=self.ask('*IDN?')
             case 'amplitude':
-                self.amplitude=float(self.instr.ask(':source1:voltage:amplitude?'))
+                self.amplitude=float(self.ask(':source1:voltage:amplitude?'))
             case 'state':
-                self.state=True if self.instr.ask(':output1:state?') == '1' else False
+                self.state=True if self.ask(':output1:state?') == '1' else False
         
         return super().__getattribute__(name)
 
     def close(self):
-        self.instr.close()
+        self.close()
 
 from numpy import array
 def fetch_enqueue_data(scope, xy_queue):
