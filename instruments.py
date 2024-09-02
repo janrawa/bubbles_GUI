@@ -1,7 +1,8 @@
 from typing import Any
 import usbtmc
 from agilentMSO9404A import agilentMSO9404A
-from numba import jit
+
+from numpy import array
 
 class Scope(agilentMSO9404A):
     '''
@@ -20,6 +21,18 @@ class Scope(agilentMSO9404A):
         return self.channels[0].measurement.fetch_waveform()
 
 class Generator(usbtmc.Instrument):
+    '''
+    Initiates communication with tektronix AFG3102 generator.
+    All atributres are set for channel 1!
+    set attributes:
+        amplitude - sets the high level of output amplitude
+        state - sets arbitrary function generator output
+    get attributes:
+        instrument_name
+        frequency
+        amplitude
+        state
+    '''
     def __init__(self, vendor_id=0x0699, product_id=0x0343):
         super().__init__(vendor_id, product_id)
 
@@ -53,10 +66,10 @@ class Generator(usbtmc.Instrument):
     def __getattribute__(self, name: str) -> Any:
         # specific procedures to do before returning variable
         match name:
-            case 'frequency':
-                self.frequency=float(self.ask(':source1:frequency?'))
             case 'instrument_name':
                 self.instrument_name=self.ask('*IDN?')
+            case 'frequency':
+                self.frequency=float(self.ask(':source1:frequency?'))
             case 'amplitude':
                 self.amplitude=float(self.ask(':source1:voltage:amplitude?'))
             case 'state':
@@ -64,7 +77,6 @@ class Generator(usbtmc.Instrument):
         
         return super().__getattribute__(name)
 
-from numpy import array
 def fetch_enqueue_data(scope, xy_queue):
     """
     Acquires data from oscilloscope,
