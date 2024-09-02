@@ -8,9 +8,9 @@ class Scope(agilentMSO9404A):
     Initiates communication with agilentMSO9404A oscilloscope.
     '''
     def __init__(self, vendor_id=0x0957, product_id=0x900d):
-        instr = usbtmc.Instrument(vendor_id, product_id)
-        self.instrument_name = instr.ask('*IDN?')
-        super().__init__(instr)
+        instrument = usbtmc.Instrument(vendor_id, product_id)
+        self.instrument_name = instrument.ask('*IDN?')
+        super().__init__(instrument)
     
     def fetch_data(self):
         '''
