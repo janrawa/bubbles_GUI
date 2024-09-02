@@ -23,7 +23,6 @@ class Generator(usbtmc.Instrument):
     def __init__(self, vendor_id=0x0699, product_id=0x0343):
         super().__init__(vendor_id, product_id)
 
-
     def __setattr__(self, name: str, value: Any) -> None:
         # specific procedures to do before setting variable
         match name:
@@ -64,9 +63,6 @@ class Generator(usbtmc.Instrument):
                 self.state=True if self.ask(':output1:state?') == '1' else False
         
         return super().__getattribute__(name)
-
-    def close(self):
-        self.close()
 
 from numpy import array
 def fetch_enqueue_data(scope, xy_queue):
