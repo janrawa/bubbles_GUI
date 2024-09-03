@@ -4,3 +4,5 @@ python_ivi==0.14.9
 python_usbtmc==0.8
 samplerate==0.2.1
 pyusb==1.2.1
+multiprocess==0.70.16
+scipy==1.14.1
