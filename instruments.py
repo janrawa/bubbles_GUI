@@ -63,19 +63,17 @@ class Generator(usbtmc.Instrument):
 
         super().__setattr__(name, value)
     
-    def __getattribute__(self, name: str) -> Any:
+    def __getattr__(self, name: str) -> Any:
         # specific procedures to do before returning variable
         match name:
             case 'instrument_name':
-                self.instrument_name=self.ask('*IDN?')
+                return self.ask('*IDN?')
             case 'frequency':
-                self.frequency=float(self.ask(':source1:frequency?'))
+                return float(self.ask(':source1:frequency?'))
             case 'amplitude':
-                self.amplitude=float(self.ask(':source1:voltage:amplitude?'))
+                return float(self.ask(':source1:voltage:amplitude?'))
             case 'state':
-                self.state=True if self.ask(':output1:state?') == '1' else False
-        
-        return super().__getattribute__(name)
+                return True if self.ask(':output1:state?') == '1' else False
 
 def fetch_enqueue_data(scope, xy_queue):
     """
