@@ -9,7 +9,15 @@ from instruments import Oscilloscope
 
 
 class OscilloscopeProcessManager(Process):
-    def __init__(self) -> None:
+    """
+    Class designed for handling oscilloscope communication on separete thread.
+    Attributes can be accesed from the main thread at any moment without
+    causing issues.
+
+    :param vendor_id: The vendor ID of the oscilloscope.
+    :param product_id: The product ID of the oscilloscope.
+    """
+    def __init__(self, vendor_id=0x0957, product_id=0x900d) -> None:
         super().__init__()
         self.daemon = True
         self.task_queue = Queue()
@@ -22,6 +30,9 @@ class OscilloscopeProcessManager(Process):
         self.stop_event  = Event()
 
         self.oscilloscope=None
+        self.vendor_id   =vendor_id
+        self.product_id  =product_id
+        
     
     def __getattr__(self, name: str) -> Any:
         self.parent_pipe.send(name)
@@ -34,7 +45,7 @@ class OscilloscopeProcessManager(Process):
         raise BrokenPipeError('Process is not running, attributes cannot be accesed!')
     
     def run(self):
-        self.oscilloscope=Oscilloscope()
+        self.oscilloscope=Oscilloscope(self.vendor_id, self.product_id)
         while not self.stop_event.is_set():
             # Poll pipe to send __getattr__ values back
             if self.child_pipe.poll():
@@ -63,12 +74,21 @@ class OscilloscopeProcessManager(Process):
         self.oscilloscope.close()
     
     def pause(self):
+        """
+        Pause acquisition of new waveforms from oscilloscope.
+        """
         self.pause_event.set()
     
     def play(self):
+        """
+        Start acquisition of new waveforms from oscilloscope.
+        """
         self.pause_event.clear()
 
     def stop(self):
+        """
+        Stop process and exit gracefully.
+        """
         self.stop_event.set()
         self.join(timeout=2)
 
@@ -93,9 +113,7 @@ class WorkerProcess(Process):
         self.stop_event.set()
 
 class ConsumerProcess(Process):
-    """
-    Short lasting processes that are run on rare ocations ex.
-    saving gathered data to an archive file.
+    """Used for performing short lasting processes that are run without repetition saving gathered data to an archive file.
     """
     def __init__(self, start:bool):
         super().__init__()
