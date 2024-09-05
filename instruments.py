@@ -1,16 +1,21 @@
 from typing import Any
-import usbtmc
+from usbtmc import Instrument
 
 from numpy import arange, array, frombuffer, int16
 
-class Oscilloscope(usbtmc.Instrument):
-    def __init__(self, vendor_id=0x0957, product_id=0x900d, timeout=2):
-        """
-        Initialize the oscilloscope instrument.
+class Oscilloscope(Instrument):
+    """Oscilloscope communication class for easy acces to x and y values displayed on the instrument.
 
-        :param vendor_id: The vendor ID of the oscilloscope.
-        :param product_id: The product ID of the oscilloscope.
-        :param timeout: Communication timeout in seconds.
+    Args:
+        Instrument (class): USBTMC instrument interface client
+    """
+    def __init__(self, vendor_id=0x0957, product_id=0x900d, timeout=2):
+        """Create new Oscilloscope object
+
+        Args:
+            vendor_id (hexadecimal, optional): The vendor ID of the oscilloscope. Defaults to 0x0957.
+            product_id (hexadecimal, optional): The product ID of the oscilloscope. Defaults to 0x900d.
+            timeout (int, optional): Communication timeout in seconds. Defaults to 2.
         """
         super().__init__(vendor_id, product_id)
         self.timeout = timeout
@@ -33,10 +38,10 @@ class Oscilloscope(usbtmc.Instrument):
                 return bool(int(self.ask(':TER?')))
 
     def fetch_x_data(self):
-        """
-        Fetch X-axis data (time data) from the oscilloscope.
+        """Fetch X-axis data (time data) from the oscilloscope.
 
-        :return: Numpy array of X-axis data (time points).
+        Returns:
+            numpy.ndarray: Numpy array of X-axis data (time values).
         """
         x_increment = float(self.ask(":WAV:XINC?"))
         x_origin = float(self.ask(":WAV:XOR?"))
@@ -50,12 +55,15 @@ class Oscilloscope(usbtmc.Instrument):
         return x_data
 
     def fetch_y_data(self, channel=1):
-        """
-        Fetch Y-axis data (voltage data) from the oscilloscope for a specified channel.
+        """Fetch Y-axis data (voltage data) from the oscilloscope for a specified channel.
 
-        :param channel: The channel number to fetch data from (default is 1).
-        :return: Numpy array of Y-axis data (voltage points).
-        """
+        Args:
+            channel (int, optional): The channel number to fetch data from. Defaults to 1.
+
+        Returns:
+            numpy.ndarray: Numpy array of Y-axis data (voltage values).
+        """        
+        
         # Set the channel to read from
         self.write(f":WAV:SOUR CHAN{channel}")
 
@@ -73,9 +81,6 @@ class Oscilloscope(usbtmc.Instrument):
 
         # Process the raw data
         header_size = 2  # Standard header size for 16-bit word data
-        data_size = len(raw_data) - header_size - 1
-        if data_size != num_points * 2:  # 16-bit data means 2 bytes per point
-            raise ValueError(f"Mismatch in data length: expected {num_points * 2}, got {data_size}")
         
         # Convert raw data to a numpy array of 16-bit unsigned integers
         y_data = frombuffer(raw_data[header_size:-1], dtype=int16)
@@ -85,21 +90,19 @@ class Oscilloscope(usbtmc.Instrument):
         y_data = (y_data - y_reference) * y_increment + y_origin
         return y_data
 
-class Generator(usbtmc.Instrument):
-    '''
-    Initiates communication with tektronix AFG3102 generator.
-    All atributres are set for channel 1!
-    set attributes:
-        amplitude - sets the high level of output amplitude
-        state - sets arbitrary function generator output
-    get attributes:
-        instrument_name
-        frequency
-        amplitude
-        state
-    '''
+class Generator(Instrument):
+    """Initiates communication with tektronix AFG3102 generator.
+
+    Args:
+        Instrument (class): USBTMC instrument interface client
+
+    Raises:
+        TypeError: in __setattr__: Attribute 'amplitude' must be a float or convertible to float.
+        TypeError: in __setattr__: Attribute 'state' must be a bool or convertible to bool.
+    """
     def __init__(self, vendor_id=0x0699, product_id=0x0343):
         super().__init__(vendor_id, product_id)
+        self.output_channel=1
 
     def __setattr__(self, name: str, value: Any) -> None:
         # specific procedures to do before setting variable
@@ -110,21 +113,21 @@ class Generator(usbtmc.Instrument):
                     try:
                         value = float(value)
                     except ValueError:
-                        raise TypeError(f"Attribute '{name}' must be a float or convertible to float.")
+                        raise TypeError(f"Attribute 'amplitude' must be a float or convertible to float.")
 
-                self.write(f':source1:voltage:amplitude {value}')
+                self.write(f':source{self.output_channel}:voltage:amplitude {value}')
             case 'state':
                 # make sure it's bool
                 if not isinstance(value, bool):
                     try:
                         value = bool(value)
                     except ValueError:
-                        raise TypeError(f"Attribute '{name}' must be a bool or convertible to bool.")
+                        raise TypeError("Attribute 'state' must be a bool or convertible to bool.")
 
                 if value:
-                    self.write(':output1:state on')
+                    self.write(f':output{self.output_channel}:state on')
                 else:
-                    self.write(':output1:state off')
+                    self.write(f':output{self.output_channel}:state off')
 
         super().__setattr__(name, value)
     
@@ -134,23 +137,11 @@ class Generator(usbtmc.Instrument):
             case 'instrument_name':
                 return self.ask('*IDN?')
             case 'frequency':
-                return float(self.ask(':source1:frequency?'))
+                return float(self.ask(f':source{self.output_channel}:frequency?'))
             case 'amplitude':
-                return float(self.ask(':source1:voltage:amplitude?'))
+                return float(self.ask(f':source{self.output_channel}:voltage:amplitude?'))
             case 'state':
-                return True if self.ask(':output1:state?') == '1' else False
-
-def fetch_enqueue_data(scope, xy_queue):
-    """
-    Acquires data from oscilloscope,
-    enqueues it for plotting and saves it to binary file.
-    """
-    scope.measurement.initiate()
-    
-    xy = array(scope.fetch_data())
-    xy_queue.put(xy)
-
-    del xy
+                return True if self.ask(':output{self.output_channel}:state?') == '1' else False
 
 def calculate_peak_voltage(target_pressure):
     pass
