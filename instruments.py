@@ -2,7 +2,7 @@ from typing import Any
 import usbtmc
 from agilentMSO9404A import agilentMSO9404A
 
-from numpy import array
+from numpy import arange, array, frombuffer, int16
 
 class Scope(agilentMSO9404A):
     '''
@@ -19,6 +19,88 @@ class Scope(agilentMSO9404A):
         1 on phisical instrument).
         '''
         return self.channels[0].measurement.fetch_waveform()
+
+class Oscilloscope(usbtmc.Instrument):
+    def __init__(self, vendor_id=0x0957, product_id=0x900d, timeout=2):
+        """
+        Initialize the oscilloscope instrument.
+
+        :param vendor_id: The vendor ID of the oscilloscope.
+        :param product_id: The product ID of the oscilloscope.
+        :param timeout: Communication timeout in seconds.
+        """
+        super().__init__(vendor_id, product_id)
+        self.timeout = timeout
+        self.write('*CLS')  # Clear the status
+        self.write(':system:header off')
+        self.write(':waveform:streaming ON')  # Enable waveform streaming
+        self.write(':waveform:byteorder lsbfirst')
+        self.write(':waveform:format word')  # Set waveform format to 16-bit word
+
+    def __getattr__(self, name: str) -> Any:
+        # specific procedures to do before returning variable
+        match name:
+            case 'instrument_name':
+                return self.ask('*IDN?')
+            case 'analog_sample_rate':
+                return float(self.ask(':acquire:srate:analog?'))
+            case 'digital_sample_rate':
+                return float(self.ask(':acquire:srate:digital?'))
+            case 'triggered':
+                return bool(int(self.ask(':TER?')))
+
+    def fetch_x_data(self):
+        """
+        Fetch X-axis data (time data) from the oscilloscope.
+
+        :return: Numpy array of X-axis data (time points).
+        """
+        x_increment = float(self.ask(":WAV:XINC?"))
+        x_origin = float(self.ask(":WAV:XOR?"))
+        x_reference = float(self.ask(":WAV:XREF?"))
+
+        # Get the number of points from the oscilloscope
+        num_points = int(self.ask(":WAV:POIN?"))
+
+        # Generate the time (X-axis) data array
+        x_data = arange(num_points) * x_increment + x_origin - x_reference * x_increment
+        return x_data
+
+    def fetch_y_data(self, channel=1):
+        """
+        Fetch Y-axis data (voltage data) from the oscilloscope for a specified channel.
+
+        :param channel: The channel number to fetch data from (default is 1).
+        :return: Numpy array of Y-axis data (voltage points).
+        """
+        # Set the channel to read from
+        self.write(f":WAV:SOUR CHAN{channel}")
+
+        # Get Y data scaling parameters
+        y_increment = float(self.ask(":WAV:YINC?"))
+        y_origin = float(self.ask(":WAV:YOR?"))
+        y_reference = float(self.ask(":WAV:YREF?"))
+
+        # Get the number of points from the oscilloscope
+        num_points = int(self.ask(":WAV:POIN?"))
+
+        # Request the waveform data
+        self.write(":WAV:DATA?")
+        raw_data = self.read_raw()  # Read raw data
+
+        # Process the raw data
+        header_size = 2  # Standard header size for 16-bit word data
+        data_size = len(raw_data) - header_size - 1
+        if data_size != num_points * 2:  # 16-bit data means 2 bytes per point
+            raise ValueError(f"Mismatch in data length: expected {num_points * 2}, got {data_size}")
+        
+        # Convert raw data to a numpy array of 16-bit unsigned integers
+        y_data = frombuffer(raw_data[header_size:-1], dtype=int16)
+        # y_data = np.frombuffer(raw_data, dtype=np.int16, header_size=2)
+
+        # Scale the data to get the correct voltage values
+        y_data = (y_data - y_reference) * y_increment + y_origin
+        return y_data
 
 class Generator(usbtmc.Instrument):
     '''
