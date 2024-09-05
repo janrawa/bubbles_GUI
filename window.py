@@ -1,4 +1,3 @@
-from multiprocess import Queue
 from tempfile import NamedTemporaryFile
 
 import tkinter as tk
@@ -11,8 +10,8 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 
 from save_file import append_binary_file, write_archive
-from instruments import Generator, Scope, fetch_enqueue_data
-from workers import ConsumerProcess, WorkerProcess
+from instruments import Generator
+from workers import ConsumerProcess, OscilloscopeProcessManager
 from generator_safety import clip, subharmonics_present
 
 import samplerate
@@ -28,13 +27,12 @@ class Application(tk.Frame):
         self.master.protocol("WM_DELETE_WINDOW", self.on_closing)
 
         # connect instrument
-        self.scope = Scope()
+        self.scope_manager = OscilloscopeProcessManager()
+        self.scope_manager.start()
         self.gen   = Generator()
         # instrument name known only after setting connection
-        self.ax_scope.set_title(self.scope.instrument_name)
+        self.ax_scope.set_title(self.scope_manager.instrument_name)
         self.ax_gen.set_title(self.gen.instrument_name)
-        # setup data scope_queue for y-values of fetched waveforms
-        self.scope_queue = Queue()
 
 
         # macine state dictgionary
@@ -48,8 +46,8 @@ class Application(tk.Frame):
         self.tmp_savefile = None
         self.metadata = {
             'scope' : {
-                'scope_name'    : self.scope.instrument_name,
-                'sample_rate'   : self.scope.acquisition.sample_rate,
+                'scope_name'    : self.scope_manager.instrument_name,
+                'sample_rate'   : self.scope_manager.analog_sample_rate,
                 'record_length' : None,
             },
             'generator' : {
@@ -68,6 +66,7 @@ class Application(tk.Frame):
             'pressure' : 0.28
         }
 
+        self.frame_number=0
         
         self.update_cancel_name = None
         self.update()
@@ -131,15 +130,17 @@ class Application(tk.Frame):
         """
         Plots waveform data. This method is run only once as a first time plot.
         """
-        xy = self.scope_queue.get(block=True)
+        x = self.scope_manager.fetch_x_data
+        self.x=x
+        y = self.scope_manager.data_queue.get(block=True)
 
-        ratio = self.number_of_plot_points/len(xy[:,0])
+        ratio = self.number_of_plot_points/len(y)
 
-        x = samplerate.resample(xy[:,0], ratio, 'sinc_best')
-        y = samplerate.resample(xy[:,1], ratio, 'sinc_best')
+        xx = samplerate.resample(x, ratio, 'sinc_best')
+        yy = samplerate.resample(y, ratio, 'sinc_best')
 
-        self.line_scope.set_xdata(x) # set x data
-        self.line_scope.set_ydata(y) # set y data
+        self.line_scope.set_xdata(xx) # set x data
+        self.line_scope.set_ydata(yy) # set y data
         self.ax_scope.relim()  # Recompute the data limits
         self.ax_scope.autoscale_view()  # Rescale the view
 
@@ -153,42 +154,43 @@ class Application(tk.Frame):
 
         self.canvas.draw()
         self.machine_state['first_acquisition'] = False
-        self.metadata['scope']['record_length'] = len(xy[:,1])
+        self.metadata['scope']['record_length'] = len(y)
     
     def update(self):
         """
         Update loop-like function for plots.
         """
         
-        if not self.scope_queue.empty():
-            xy = self.scope_queue.get()
+        if not self.scope_manager.data_queue.empty():
+            y = self.scope_manager.data_queue.get()
 
             self.misc_process.schedule_process(append_binary_file,
-                                               self.tmp_savefile.name, xy[:, 1])
+                                               self.tmp_savefile.name, y)
             
             if self.machine_state['generator_on']:
-                # self.update_voltage(xy)
+                # self.update_voltage(x, y)
                 pass
 
             if self.machine_state['acquisition_on']:
-                self.update_plot(xy)
+                # self.update_plot(y)
+                pass
             
-            del xy
+            del y
 
         # updates plot in the background every 200 ms at most 
-        self.update_cancel_name = self.master.after(200, self.update)
+        self.update_cancel_name = self.master.after(20, self.update)
     
-    def update_voltage(self, xy):
+    def update_voltage(self, x, y):
         """
         Parameters:
-            xy - oscilloscope readout
+            x, y - oscilloscope readout
         Description:
             Adjcusts generator voltage based on oscilloscope readout.
         """
-        N = len(xy[:,0])
+        N = len(x)
         T = 1/self.metadata['scope']['samplerate']
 
-        yf = fft(xy[:,1])
+        yf = fft(y)
         xf = fftfreq(N, T)[:N//2]
 
         subharmonics = subharmonics_present(xf, yf, self.gen.frequency)
@@ -213,13 +215,13 @@ class Application(tk.Frame):
         )
 
 
-    def update_plot(self, xy):
+    def update_plot(self, y):
         """
         Updates plot values from from scope_queue.
         After running sets up another update in 200 ms.
         """
-        ratio = self.number_of_plot_points/len(xy[:,0])
-        y = samplerate.resample(xy[:,1], ratio, 'sinc_best')
+        ratio = self.number_of_plot_points/len(y)
+        y = samplerate.resample(y, ratio, 'sinc_best')
 
         self.line_scope.set_ydata(y)
         # self.line_gen.set_ydata(self.generator_voltage)
@@ -238,17 +240,12 @@ class Application(tk.Frame):
 
         if not self.machine_state['acquisition_on']:
             # updates metadata
-            self.metadata['scope']['sample_rate'] = self.scope.acquisition \
-                .sample_rate
-
+            self.metadata['scope']['sample_rate'] = self.scope_manager.sample_rate
             self.tmp_savefile = NamedTemporaryFile()
-            self.acquisition_process =  WorkerProcess(
-                fetch_enqueue_data,
-                self.scope, self.scope_queue
-            )
-            self.acquisition_process.start()
+
+            self.scope_manager.play()
         else:
-            self.acquisition_process.stop()
+            self.scope_manager.pause()
         
         self.machine_state['acquisition_on'] = not self.machine_state['acquisition_on']
 
@@ -344,12 +341,9 @@ class Application(tk.Frame):
 
         # Stop the worker thread
         self.misc_process.stop()
-
-        # join workers
-        # self.acquisition_process.join()
-        self.misc_process.join()
+        self.scope_manager.stop()
         
 
-        self.scope.close()
+        
         self.gen.close()
 

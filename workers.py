@@ -122,3 +122,4 @@ class ConsumerProcess(Process):
 
     def stop(self):
         self.stop_event.set()
+        self.join(timeout=2)
