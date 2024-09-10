@@ -141,7 +141,7 @@ class Generator(Instrument):
             case 'amplitude':
                 return float(self.ask(f':source{self.output_channel}:voltage:amplitude?'))
             case 'state':
-                return True if self.ask(':output{self.output_channel}:state?') == '1' else False
+                return True if self.ask(f':output{self.output_channel}:state?') == '1' else False
 
 def calculate_peak_voltage(target_pressure):
     pass
