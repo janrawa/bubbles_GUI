@@ -127,8 +127,6 @@ class Generator(Instrument):
                     self.write(f':output{self.output_channel}:state on')
                 else:
                     self.write(f':output{self.output_channel}:state off')
-
-        super().__setattr__(name, value)
     
     def __getattr__(self, name: str) -> Any:
         # specific procedures to do before returning variable
