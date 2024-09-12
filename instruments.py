@@ -36,6 +36,8 @@ class Oscilloscope(Instrument):
                 return float(self.ask(':acquire:srate:digital?'))
             case 'triggered':
                 return bool(int(self.ask(':TER?')))
+            case 'record_length':
+                return int(self.ask(":WAV:POIN?"))
 
     def fetch_x_data(self):
         """Fetch X-axis data (time data) from the oscilloscope.
@@ -71,9 +73,6 @@ class Oscilloscope(Instrument):
         y_increment = float(self.ask(":WAV:YINC?"))
         y_origin = float(self.ask(":WAV:YOR?"))
         y_reference = float(self.ask(":WAV:YREF?"))
-
-        # Get the number of points from the oscilloscope
-        num_points = int(self.ask(":WAV:POIN?"))
 
         # Request the waveform data
         self.write(":WAV:DATA?")
