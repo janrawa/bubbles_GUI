@@ -1,3 +1,4 @@
+from typing import Union
 from PyQt6.QtWidgets import (QMainWindow, QApplication, QGroupBox, QLabel,
                              QGridLayout, QWidget, QPushButton, QFileDialog,
                              QMessageBox)
@@ -5,6 +6,7 @@ from PyQt6.QtWidgets import (QMainWindow, QApplication, QGroupBox, QLabel,
 from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 
+from abc import abstractmethod
 import sys
 
 
@@ -101,6 +103,8 @@ class OscilloscopeGroupBox(QGroupBox):
             getattr(self, key).setText(value)
 
 class MainWindowBase(QMainWindow):
+    """Base clas of MainWindow (creates all widgets and update abstraction).
+    """
     def __init__(self):
         super().__init__()
         
@@ -147,16 +151,38 @@ class MainWindowBase(QMainWindow):
         self.timer.start()  # Start the timer
 
     def saveFile(self):
-        file_path, _ = QFileDialog.getSaveFileName(self, "Save File", "", "Archive Files (*.zip);;All Files (*.*)")
+        """Opens QFileDialog asking for saveFile path
+
+        Returns:
+            str: path to saveFile (name included)
+        """
+        file_path, _ = QFileDialog.getSaveFileName(self, "Save File",
+                                                    "", 
+                                                    "Archive Files (*.zip);;"\
+                                                    "All Files (*.*)")
         return file_path
 
+    @abstractmethod
     def updateWidgets(self):
+        """Abstract method for updating widgets on a set interval
+        using self.timer.
+        """
         pass
     
+    @abstractmethod
     def performBackgroundTasks(self):
+        """Abstract method for performing tasks in the background
+        (ex. appending tempDataFile) on a set interval using self.timer.
+        """
         pass
 
     def showErrorMessageBox(self, error : Union[str, Exception], description : str = None):
+        """Show QMessageBox with error message and optional description.
+
+        Args:
+            error (Union[str, Exception]): error code to display
+            description (str, optional): descritption of the error. Defaults to None.
+        """
         if isinstance(error, Exception):
             try:
                 error=str(error)
