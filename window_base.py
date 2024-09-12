@@ -156,7 +156,13 @@ class MainWindowBase(QMainWindow):
     def performBackgroundTasks(self):
         pass
 
-    def showErrorMessageBox(self, error : str, description : str = None):
+    def showErrorMessageBox(self, error : Union[str, Exception], description : str = None):
+        if isinstance(error, Exception):
+            try:
+                error=str(error)
+            except Exception as e:
+                self.showErrorMessageBox(e)
+
         warning_dialog=QMessageBox(self)
         warning_dialog.setWindowTitle("Error!")
         warning_dialog.setText(error)
