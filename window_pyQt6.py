@@ -159,18 +159,20 @@ class MainWindow(MainWindowBase):
         path = super().saveFile()
 
         if path:
-            metadata = {
-                'scope' : {
-                    'scope_name'    : str(self.oscilloscope.instrument_name),
-                    'sample_rate'   : str(self.oscilloscope.analog_sample_rate),
-                    'record_length' : str(self.oscilloscope.record_length),
-                },
-                'generator' : {
-                    'generator_name': str(self.generator.instrument_name),
-                    'frequency'     : str(self.generator.frequency),
-                    'amplitude'     : str(self.genexrator.amplitude)
-                },
-            }
+            metadata = {}
+            if self.oscilloscope != None:
+                metadata['scope'] = {
+                    'scope_name'    : self.oscilloscope.instrument_name,
+                    'sample_rate'   : self.oscilloscope.analog_sample_rate,
+                    'record_length' : self.oscilloscope.record_length,
+                }
+            
+            if self.generator != None:
+                metadata['generator'] = {
+                    'generator_name': self.generator.instrument_name,
+                    'frequency'     : self.generator.frequency,
+                    'amplitude'     : self.genexrator.amplitude
+                }
 
             # write_archive process wrapper; keeps tempDataFile from beeing deleted
             self.processPoolExecutor.submit(write_archive, metadata, self.tempDataFile.name, path)
