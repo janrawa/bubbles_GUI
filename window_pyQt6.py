@@ -5,7 +5,7 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory
 from window_base import ConnectionDialog, MainWindowBase
 from instruments import Generator
 from workers import OscilloscopeProcessManager
-from save_file import append_binary_file, write_archive
+from save_file import append_binary_file, write_archive_xy
 
 from usbtmc import list_devices
 
@@ -175,7 +175,9 @@ class MainWindow(MainWindowBase):
 
             # write_archive process wrapper; keeps tempDataFile from beeing deleted
             # before creating an archive
-            self.processPoolExecutor.submit(write_archive, metadata, self.tempDataFile.name, path)
+            self.processPoolExecutor.submit(write_archive_xy, metadata,
+                                            self.oscilloscope.fetch_x_data,
+                                            self.tempDataFile.name, path)
             self.tempDataFile = NamedTemporaryFile(dir=self.tempDataDir.name, delete=False)
             self.tempDataAcquired = False
 
