@@ -1,5 +1,6 @@
-from typing import Any
-from usbtmc import Instrument
+from typing import Any, List, Tuple
+from usbtmc import Instrument, list_devices
+from usb.core import Device
 
 from numpy import arange, array, frombuffer, int16
 
@@ -9,7 +10,7 @@ class Oscilloscope(Instrument):
     Args:
         Instrument (class): USBTMC instrument interface client
     """
-    def __init__(self, vendor_id=0x0957, product_id=0x900d, timeout=2):
+    def __init__(self, *args, timeout=2, **kwargs):
         """Create new Oscilloscope object
 
         Args:
@@ -17,7 +18,8 @@ class Oscilloscope(Instrument):
             product_id (hexadecimal, optional): The product ID of the oscilloscope. Defaults to 0x900d.
             timeout (int, optional): Communication timeout in seconds. Defaults to 2.
         """
-        super().__init__(vendor_id, product_id)
+        super().__init__(*args, **kwargs)    
+        
         self.timeout = timeout
         self.write('*CLS')  # Clear the status
         self.write(':system:header off')
@@ -38,6 +40,8 @@ class Oscilloscope(Instrument):
                 return bool(int(self.ask(':TER?')))
             case 'record_length':
                 return int(self.ask(":WAV:POIN?"))
+
+        super().__getattr__(name)
 
     def fetch_x_data(self):
         """Fetch X-axis data (time data) from the oscilloscope.
@@ -99,8 +103,9 @@ class Generator(Instrument):
         TypeError: in __setattr__: Attribute 'amplitude' must be a float or convertible to float.
         TypeError: in __setattr__: Attribute 'state' must be a bool or convertible to bool.
     """
-    def __init__(self, vendor_id=0x0699, product_id=0x0343, timeout=2):
-        super().__init__(vendor_id, product_id)
+    def __init__(self, *args, timeout=2, **kwargs):
+        super().__init__(*args, **kwargs)
+        
         self.timeout = timeout
         self.output_channel=1
 
@@ -128,6 +133,8 @@ class Generator(Instrument):
                     self.write(f':output{self.output_channel}:state on')
                 else:
                     self.write(f':output{self.output_channel}:state off')
+        
+        super().__setattr__(name, value)
     
     def __getattr__(self, name: str) -> Any:
         # specific procedures to do before returning variable
@@ -140,6 +147,8 @@ class Generator(Instrument):
                 return float(self.ask(f':source{self.output_channel}:voltage:amplitude?'))
             case 'state':
                 return True if self.ask(f':output{self.output_channel}:state?') == '1' else False
+        
+        super().__getattr__(name)
 
 def calculate_peak_voltage(target_pressure):
     pass
