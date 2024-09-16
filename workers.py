@@ -17,7 +17,7 @@ class OscilloscopeProcessManager(Process):
     :param vendor_id: The vendor ID of the oscilloscope.
     :param product_id: The product ID of the oscilloscope.
     """
-    def __init__(self, vendor_id=0x0957, product_id=0x900d) -> None:
+    def __init__(self, device=None, vendor_id=0x0957, product_id=0x900d, autostart=False) -> None:
         super().__init__()
         self.daemon = True
         self.task_queue = Queue()
@@ -30,22 +30,28 @@ class OscilloscopeProcessManager(Process):
         self.stop_event  = Event()
 
         self.oscilloscope=None
-        self.vendor_id   =vendor_id
-        self.product_id  =product_id
+
+        if device != None:
+            self.oscilloscope=Oscilloscope(device)
+        else:
+            self.oscilloscope=Oscilloscope(vendor_id, product_id)
+
+        if autostart:
+            self.start()
         
     
     def __getattr__(self, name: str) -> Any:
+        if not self.is_alive():
+            raise BrokenPipeError('Process is not running, attributes cannot be accesed!')
+        
         self.parent_pipe.send(name)
         
         while not self.stop_event.is_set():
             if self.parent_pipe.poll():
                 return self.parent_pipe.recv()
             sleep(.01)
-        
-        raise BrokenPipeError('Process is not running, attributes cannot be accesed!')
     
     def run(self):
-        self.oscilloscope=Oscilloscope(self.vendor_id, self.product_id)
         while not self.stop_event.is_set():
             # Poll pipe to send __getattr__ values back
             if self.child_pipe.poll():
@@ -71,8 +77,7 @@ class OscilloscopeProcessManager(Process):
                 del y
             
             sleep(.01)
-        self.oscilloscope.close()
-    
+
     def pause(self):
         """
         Pause acquisition of new waveforms from oscilloscope.
@@ -91,6 +96,7 @@ class OscilloscopeProcessManager(Process):
         """
         self.stop_event.set()
         self.join(timeout=2)
+        self.oscilloscope.close()
 
 class WorkerProcess(Process):
     """
