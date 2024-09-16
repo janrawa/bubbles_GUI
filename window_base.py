@@ -1,7 +1,8 @@
-from typing import Union
+from typing import Any, List, Tuple, Union
 from PyQt6.QtWidgets import (QMainWindow, QApplication, QGroupBox, QLabel,
                              QGridLayout, QWidget, QPushButton, QFileDialog,
-                             QMessageBox)
+                             QMessageBox, QDialogButtonBox, QDialog, QVBoxLayout,
+                             QComboBox)
 
 from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
@@ -20,6 +21,29 @@ class ConnectionButton(QPushButton):
             self.setText('Stop')
         else:
             self.setText('Start')
+
+class ConnectionDialog(QDialog):
+    def __init__(self, *args, item_list : Tuple[str]=('1','2','3','4', ), **kwargs):
+        super().__init__(*args, **kwargs)
+
+        QBtn = (
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+
+        self.buttonBox = QDialogButtonBox(QBtn)
+
+        self.buttonBox.accepted.connect(lambda: self.close())
+        self.buttonBox.rejected.connect(lambda: self.close())
+
+        layout      = QVBoxLayout()
+        message     = QLabel("Select:")
+        self.comboBox    = QComboBox(self)
+        self.comboBox.addItems(item_list)
+
+        layout.addWidget(message)
+        layout.addWidget(self.comboBox)
+        layout.addWidget(self.buttonBox)
+        self.setLayout(layout)
 
 class GeneratorGroupBox(QGroupBox):
     def __init__(self):
@@ -77,7 +101,7 @@ class OscilloscopeGroupBox(QGroupBox):
         self.sample_rate        = QLabel('N/A')
         
         self.connectionButton   = ConnectionButton()
-
+        
         self.gridLayout = QGridLayout()
 
         self.gridLayout.addWidget(instrument_nameLabel, 0, 0)
@@ -194,6 +218,11 @@ class MainWindowBase(QMainWindow):
         warning_dialog.setText(error)
         warning_dialog.setDetailedText(description)
         warning_dialog.exec()
+
+    def showComboMessageBox(self, item_list=Tuple[str]):
+        dialog=ConnectionDialog(self, item_list=item_list)
+        dialog.setWindowTitle("Select device")
+        dialog.exec()
 
 if __name__ == '__main__':
 
