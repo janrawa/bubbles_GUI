@@ -70,7 +70,7 @@ class OscilloscopeProcessManager(Process):
                 task = self.task_queue.get()
                 task()
             # Perform data acquisition and put it on data_queue
-            elif not self.pause_event.is_set() \
+            elif self.pause_event.is_set() \
                     and self.oscilloscope.triggered:
                 y=self.oscilloscope.fetch_y_data()
                 self.data_queue.put(y)
