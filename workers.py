@@ -90,6 +90,14 @@ class OscilloscopeProcessManager(Process):
         """
         self.pause_event.clear()
 
+    def togglePause(self):
+        """Toggle state of `self.pause_event`. 
+        """
+        if self.pause_event.is_set():
+            self.play()
+        else:
+            self.pause()
+
     def stop(self):
         """
         Stop process and exit gracefully.
