@@ -175,6 +175,7 @@ class MainWindow(MainWindowBase):
                 }
 
             # write_archive process wrapper; keeps tempDataFile from beeing deleted
+            # before creating an archive
             self.processPoolExecutor.submit(write_archive, metadata, self.tempDataFile.name, path)
             self.tempDataFile = NamedTemporaryFile(dir=self.tempDataDir.name, delete=False)
             self.tempDataAcquired = False
