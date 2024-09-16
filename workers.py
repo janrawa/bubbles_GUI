@@ -49,7 +49,7 @@ class OscilloscopeProcessManager(Process):
         while not self.stop_event.is_set():
             if self.parent_pipe.poll():
                 return self.parent_pipe.recv()
-            sleep(.01)
+            sleep(.001)
     
     def run(self):
         while not self.stop_event.is_set():
@@ -76,7 +76,7 @@ class OscilloscopeProcessManager(Process):
                 self.data_queue.put(y)
                 del y
             
-            sleep(.01)
+            sleep(.001)
 
     def pause(self):
         """
