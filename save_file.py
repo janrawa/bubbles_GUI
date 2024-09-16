@@ -1,8 +1,10 @@
 import json
 from tempfile import NamedTemporaryFile
 import zipfile
+import os
 
 import numpy
+
 
 
 def write_archive(metadata : dict, source_data_name : str, dest_archive : str):
@@ -22,6 +24,7 @@ def write_archive(metadata : dict, source_data_name : str, dest_archive : str):
         archive_file.write(source_data_name, 'data.bin')
 
     print('Data Saved in:', dest_archive)
+    os.remove(source_data_name)
 
 def append_binary_file(dest_file : str, data : numpy.array):
         # write y-vals of the waveform into file
