@@ -108,22 +108,19 @@ class OscilloscopeProcessManager(Process):
 
 class DeviceProcessManager(Process):
     """
-    Class designed for handling oscilloscope communication on separete thread.
+    Class designed for handling oscilloscope and generator communication on separete thread.
     Attributes can be accesed from the main thread at any moment without
     causing issues.
-
-    :param vendor_id: The vendor ID of the oscilloscope.
-    :param product_id: The product ID of the oscilloscope.
     """
-    def __init__(self, oscilloscopeDevice, generatorDevice, autostart=False) -> None:
+    def __init__(self, oscilloscopeDevice, generatorDevice=None, autostart=False) -> None:
         super().__init__()
         self.daemon = True
         self.data_queue = Queue()
 
         # pipes for communication with main thread
         # child pipes accesible only in child thread
-        self.parent_gen_attr, self.__child_gen_attr = Pipe()
-        self.parent_osc_attr, self.__child_osc_attr = Pipe()
+        self.__parent_gen_attr, self.__child_gen_attr = Pipe()
+        self.__parent_osc_attr, self.__child_osc_attr = Pipe()
 
         self.pause_event = Event()
         self.pause_event.set()
@@ -140,26 +137,26 @@ class DeviceProcessManager(Process):
             raise BrokenPipeError('Process is not running, attributes cannot be accesed!')
         
         if hasattr(self.__osc, name):
-            self.parent_osc_attr.send((name, *args))
+            self.__parent_osc_attr.send((name, *args))
         else:
             raise AttributeError('Oscilloscope attribute not found!')
         
         if not self.stop_event.is_set():
-            if self.parent_osc_attr.poll(timeout=timeout):
-                return self.parent_osc_attr.recv()
+            if self.__parent_osc_attr.poll(timeout=timeout):
+                return self.__parent_osc_attr.recv()
         
     def call_gen_method(self, name, *args, timeout=2):
         if not self.is_alive():
             raise BrokenPipeError('Process is not running, attributes cannot be accesed!')
         
         if hasattr(self.__gen, name):
-            self.parent_gen_attr.send((name, *args))
+            self.__parent_gen_attr.send((name, *args))
         else:
             raise AttributeError('Generator attribute not found!')
 
         if not self.stop_event.is_set():
-            if self.parent_gen_attr.poll(timeout=timeout):
-                return self.parent_gen_attr.recv()
+            if self.__parent_gen_attr.poll(timeout=timeout):
+                return self.__parent_gen_attr.recv()
         
     def run(self):
         while not self.stop_event.is_set():
