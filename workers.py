@@ -5,7 +5,7 @@ from types import MethodType
 from queue import Empty
 from multiprocessing import Queue, Process, Event, Pipe
 
-from instruments import Oscilloscope
+from instruments import Generator, Oscilloscope
 
 
 class OscilloscopeProcessManager(Process):
@@ -105,6 +105,124 @@ class OscilloscopeProcessManager(Process):
         self.stop_event.set()
         self.join(timeout=2)
         self.oscilloscope.close()
+
+class DeviceProcessManager(Process):
+    """
+    Class designed for handling oscilloscope communication on separete thread.
+    Attributes can be accesed from the main thread at any moment without
+    causing issues.
+
+    :param vendor_id: The vendor ID of the oscilloscope.
+    :param product_id: The product ID of the oscilloscope.
+    """
+    def __init__(self, oscilloscopeDevice, generatorDevice, autostart=False) -> None:
+        super().__init__()
+        self.daemon = True
+        self.data_queue = Queue()
+
+        # pipes for communication with main thread
+        # child pipes accesible only in child thread
+        self.parent_gen_attr, self.__child_gen_attr = Pipe()
+        self.parent_osc_attr, self.__child_osc_attr = Pipe()
+
+        self.pause_event = Event()
+        self.pause_event.set()
+        self.stop_event  = Event()
+
+        self.__osc = Oscilloscope(oscilloscopeDevice)
+        self.__gen = Generator(generatorDevice)
+
+        if autostart:
+            self.start()
+
+    def call_osc_method(self, name, *args, timeout=2):
+        if not self.is_alive():
+            raise BrokenPipeError('Process is not running, attributes cannot be accesed!')
+        
+        if hasattr(self.__osc, name):
+            self.parent_osc_attr.send((name, *args))
+        else:
+            raise AttributeError('Oscilloscope attribute not found!')
+        
+        if not self.stop_event.is_set():
+            if self.parent_osc_attr.poll(timeout=timeout):
+                return self.parent_osc_attr.recv()
+        
+    def call_gen_method(self, name, *args, timeout=2):
+        if not self.is_alive():
+            raise BrokenPipeError('Process is not running, attributes cannot be accesed!')
+        
+        if hasattr(self.__gen, name):
+            self.parent_gen_attr.send((name, *args))
+        else:
+            raise AttributeError('Generator attribute not found!')
+
+        if not self.stop_event.is_set():
+            if self.parent_gen_attr.poll(timeout=timeout):
+                return self.parent_gen_attr.recv()
+        
+    def run(self):
+        while not self.stop_event.is_set():
+            # Poll oscilloscope attribute pipe
+            if self.__child_gen_attr.poll():
+                # Get method name and *args
+                attr_name, *args=self.__child_gen_attr.recv()
+                if hasattr(self.__gen, attr_name):
+                    attr=getattr(self.__gen, attr_name)
+                    if type(attr) == MethodType:
+                        self.__child_gen_attr.send(attr(*args))
+                    else:
+                        self.__child_gen_attr.send(None)
+            # Poll generator attribute pipe
+            elif self.__child_osc_attr.poll():
+                # Get method name and *args
+                attr_name, *args=self.__child_osc_attr.recv()
+                if hasattr(self.__osc, attr_name):
+                    attr=getattr(self.__osc, attr_name)
+                    if type(attr) == MethodType:
+                        self.__child_osc_attr.send(attr(*args))
+                    else:
+                        self.__child_gen_attr.send(None)
+            # Perform data acquisition and put it on data_queue
+            elif self.pause_event.is_set() \
+                    and self.__osc.triggered:
+                y=self.__osc.fetch_y_data()
+                self.data_queue.put(y)
+                del y
+            
+            sleep(.001)
+
+    def pause(self):
+        """
+        Pause acquisition of new waveforms from oscilloscope.
+        """
+        self.pause_event.set()
+    
+    def play(self):
+        """
+        Start acquisition of new waveforms from oscilloscope.
+        """
+        self.pause_event.clear()
+
+    def togglePause(self):
+        """Toggle state of `self.pause_event`. 
+        """
+        if self.pause_event.is_set():
+            self.play()
+        else:
+            self.pause()
+
+    def stop(self):
+        """
+        Stop process and exit gracefully.
+        """
+        self.stop_event.set()
+        self.join(timeout=2)
+        self.__osc.close()
+        self.__gen.close()
+
+
+
 
 class WorkerProcess(Process):
     """
