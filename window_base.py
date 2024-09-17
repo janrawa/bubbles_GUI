@@ -168,11 +168,11 @@ class MainWindowBase(QMainWindow):
         self.frame_counter = 0
 
         # Set up a QTimer
-        self.timer = QTimer(self)
-        self.timer.setInterval(1000)
-        self.timer.timeout.connect(self.updateWidgets)
-        self.timer.timeout.connect(self.performBackgroundTasks)
-        self.timer.start()  # Start the timer
+        self.updateTimer = QTimer(self)
+        self.updateTimer.setInterval(1000)
+        self.updateTimer.timeout.connect(self.updateWidgets)
+        self.updateTimer.timeout.connect(self.performBackgroundTasks)
+        self.updateTimer.start()
 
     def saveFile(self):
         """Opens QFileDialog asking for saveFile path
@@ -191,14 +191,14 @@ class MainWindowBase(QMainWindow):
     @abstractmethod
     def updateWidgets(self):
         """Abstract method for updating widgets on a set interval
-        using self.timer.
+        using self.updateTimer.
         """
         pass
     
     @abstractmethod
     def performBackgroundTasks(self):
         """Abstract method for performing tasks in the background
-        (ex. appending tempDataFile) on a set interval using self.timer.
+        (ex. appending tempDataFile) on a set interval using self.updateTimer.
         """
         pass
 
@@ -226,6 +226,9 @@ class MainWindowBase(QMainWindow):
         dialog.setWindowTitle("Select device")
         dialog.exec()
 
+    def close(self):
+        self.updateTimer.stop()
+        super().close()
 if __name__ == '__main__':
 
     import sys
