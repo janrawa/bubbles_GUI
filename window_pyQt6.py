@@ -184,11 +184,8 @@ class MainWindow(MainWindowBase):
     def close(self):
         """Application window will close, than all the devices and processes.
         """
-        self.timer.stop()
-        
-        self.processPoolExecutor.shutdown(wait=True)
-        
         super().close()
+        self.processPoolExecutor.shutdown(wait=True)
 
         if self.generator != None:
             self.generator.close()
