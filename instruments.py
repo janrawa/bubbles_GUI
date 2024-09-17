@@ -108,6 +108,7 @@ class Generator(Instrument):
         
         self.timeout = timeout
         self.output_channel=1
+        self.write('*CLS')  # Clear the status
 
     def __setattr__(self, name: str, value: Any) -> None:
         # specific procedures to do before setting variable
