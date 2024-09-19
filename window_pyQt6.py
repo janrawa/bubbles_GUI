@@ -1,17 +1,14 @@
-from PyQt6.QtCore import  QTimer
-
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
+from known_devices import known_device_list
 from window_base import ConnectionDialog, MainWindowBase
 from instruments import Generator
-from workers import OscilloscopeProcessManager
+from workers import DeviceProcessManager, OscilloscopeProcessManager
 from save_file import append_binary_file, write_archive_xy
 
 from usbtmc import list_devices
 
 from concurrent.futures import ProcessPoolExecutor
-
-import pdb
 
 from decimal import Decimal
 def float_to_eng(number:float, digits:int=4):
@@ -24,8 +21,8 @@ class MainWindow(MainWindowBase):
         self.tempDataFile       = NamedTemporaryFile(dir=self.tempDataDir.name, delete=False)
         self.tempDataAcquired   = False
 
-        self.generator      = None
-        self.oscilloscope   = None
+
+        self.deviceManager  = None
 
         self.generatorGroupBox.connectionButton.clicked.connect(
             self.changeGeneratorState
@@ -36,108 +33,108 @@ class MainWindow(MainWindowBase):
 
         self.processPoolExecutor = ProcessPoolExecutor(max_workers=1)
 
-    def initGenerator(self, device) -> bool:
-        try:
-            self.generator = Generator(device)
-        except Exception as e:
-            self.showErrorMessageBox(e, 'Generator initialization failed! '\
-                                             'Try reconnectin device.')
+    def initDevices(self, deviceOsc, deviceGen):
+        self.deviceManager = DeviceProcessManager(deviceOsc, deviceGen, autostart=True)
+
+        # Fetch generator name
+        generatorName=self.deviceManager.gen__getattr__('instrument_name')
+        # Fetch generator state
+        generatorState=self.deviceManager.gen__getattr__('state')
+
+        self.generatorGroupBox.updateWidgets(
+            instrument_name=generatorName,
+            state=generatorState
+        )
+        
+        self.generatorGroupBox.connectionButton.updateLabels(
+            generatorState
+        )
+
+
+        # Fetch oscilloscope name
+        self.oscilloscopeGroupBox.updateWidgets(
+            instrument_name=self.deviceManager.osc__getattr__('instrument_name')
+        )
+        # Fetch acquisition state
+        self.oscilloscopeGroupBox.connectionButton.updateLabels(
+            not self.deviceManager.pause_event.is_set()
+        )
+
+    def connectDevicesDialog(self):
+        # get device
+        device_list, str_items=known_device_list()
+        dialog=ConnectionDialog(self,
+            item_list=str_items
+        )
+
+        dialog.buttonBox.accepted.connect(
+            lambda: self.initDevices(
+                device_list[dialog.comboOsc.currentIndex()] if len(device_list) else None,
+                device_list[dialog.comboGen.currentIndex()] if len(device_list) else None
+            )
+        )
+        
+        dialog.exec()
 
     def changeGeneratorState(self):
         """Button logic for generatorGroupBox.connectionButton. Connects
         device/starts/stops generator output in apropriete circumstances.
         """
-        if self.generator == None:
-            # get device
-            device_list = list_devices()
-            dialog=ConnectionDialog(self,
-                item_list=[f'{hex(dev.idVendor)}:{hex(dev.idProduct)}' for dev in device_list]
-            )
+        if self.deviceManager == None:
+            self.connectDevicesDialog()
 
-            dialog.buttonBox.accepted.connect(
-                lambda: self.initGenerator(
-                    device_list[dialog.comboBox.currentIndex()]
-                ) if len(device_list) else None
-            )
-            
-            dialog.exec()
-
-        if self.generator != None:
-            self.generator.state = not self.generator.state
+        if self.deviceManager != None:
+            newGeneratorState = not self.deviceManager.gen__getattr__('state')
+            self.deviceManager.gen__setattr__('state', newGeneratorState)
+            # Fetch generator state
             self.generatorGroupBox.connectionButton.updateLabels(
-                self.generator.state
+                newGeneratorState
             )
 
-            self.generatorGroupBox.updateWidgets(
-                instrument_name=self.generator.instrument_name
-            )
-    def initOscilloscope(self, device):
-        try:
-            self.oscilloscope = OscilloscopeProcessManager(device=device, autostart=True)
-        except Exception as e:
-            self.showErrorMessageBox(str(e), 'Oscilloscope initialization failed! '\
-                                             'Try reconnectin device.')
-            
     def changeOscilloscopeState(self):
         """Button logic for oscilloscopeGroupBox.connectionButton. Connects
         device/starts/stops acquisition in apropriete circumstances.
         """
         
-        if self.oscilloscope == None:
-            device_list = list_devices()
-            dialog=ConnectionDialog(self,
-                item_list=[f'{hex(dev.idVendor)}:{hex(dev.idProduct)}' for dev in device_list]
-            )
-
-            dialog.buttonBox.accepted.connect(
-                lambda: self.initOscilloscope(
-                    device_list[dialog.comboBox.currentIndex()]
-                ) if len(device_list) else None
-            )
-            
-            dialog.exec()
+        if self.deviceManager == None:
+            self.connectDevicesDialog()
         
-        if self.oscilloscope != None:
+        if self.deviceManager != None:
             self.oscilloscopeGroupBox.connectionButton.updateLabels(
-                not self.oscilloscope.pause_event.is_set()
+                not self.deviceManager.pause_event.is_set()
             )
 
-            # After 100 ms update `analog_sample_rate` display label.
-            # Prevents blocking UI
+            # Update sample rate
             self.oscilloscopeGroupBox.updateWidgets(
-                instrument_name=self.oscilloscope.instrument_name,
-                sample_rate=float_to_eng(self.oscilloscope.analog_sample_rate)
+                acquisition_state=self.deviceManager.pause_event.is_set(),
+                sample_rate=float_to_eng(self.deviceManager.osc__getattr__('analog_sample_rate'))
             )
 
-            self.oscilloscope.togglePause()
+            self.deviceManager.togglePause()
 
     def updateWidgets(self):
         """Updates widget display Generator and Oscilloscope (if connected).
         Some display values are slow to fetch from deviced like
         `analog_sample_rate`, so they're not updated every frame.
         """
-        if self.generator != None:
+        if self.deviceManager != None:
             self.generatorGroupBox.updateWidgets(
-                state=self.generator.state,
-                frequency=float_to_eng(self.generator.frequency),
-                amplitude=round(self.generator.amplitude, 4)
+                frequency=float_to_eng(self.deviceManager.gen__getattr__('frequency')),
+                amplitude=round(self.deviceManager.gen__getattr__('amplitude'), 4)
             )
         
-        if self.oscilloscope != None:
-            self.oscilloscopeGroupBox.updateWidgets(
-                acquisition_state=self.oscilloscope.pause_event.is_set(),
-            )
-    
     def performBackgroundTasks(self):
         """Perform background tasks:
             * save acquired data to binary file,
             * <add more later>
         """
-        if self.oscilloscope != None:
-            while not self.oscilloscope.data_queue.empty():
-                y=self.oscilloscope.data_queue.get()
-                append_binary_file(self.tempDataFile.name, y)
+        if self.deviceManager != None:
+            while not self.deviceManager.data_queue.empty():
+                y=self.deviceManager.data_queue.get()
                 self.tempDataAcquired = True
+                
+                append_binary_file(self.tempDataFile.name, y)
+                
                 
 
     def saveFile(self):
@@ -149,7 +146,7 @@ class MainWindow(MainWindowBase):
             )
             return
         
-        if self.oscilloscope.pause_event.is_set():
+        if self.deviceManager.pause_event.is_set():
             self.showErrorMessageBox(
                 'Acquisition running!', 'Try stoping acquisitioin and saving.'
             )
@@ -159,24 +156,22 @@ class MainWindow(MainWindowBase):
 
         if path:
             metadata = {}
-            if self.oscilloscope != None:
+            if self.deviceManager != None:
                 metadata['scope'] = {
-                    'scope_name'    : self.oscilloscope.instrument_name,
-                    'sample_rate'   : self.oscilloscope.analog_sample_rate,
-                    'record_length' : self.oscilloscope.record_length,
+                    'scope_name'    : self.deviceManager.osc__getattr__('instrument_name'),
+                    'sample_rate'   : self.deviceManager.osc__getattr__('analog_sample_rate'),
+                    'record_length' : self.deviceManager.osc__getattr__('record_length'),
                 }
-            
-            if self.generator != None:
                 metadata['generator'] = {
-                    'generator_name': self.generator.instrument_name,
-                    'frequency'     : self.generator.frequency,
-                    'amplitude'     : self.genexrator.amplitude
+                    'generator_name': self.deviceManager.gen__getattr__('instrument_name'),
+                    'frequency'     : self.deviceManager.gen__getattr__('frequency'),
+                    'amplitude'     : self.deviceManager.gen__getattr__('amplitude')
                 }
 
             # write_archive process wrapper; keeps tempDataFile from beeing deleted
             # before creating an archive
             self.processPoolExecutor.submit(write_archive_xy, metadata,
-                                            self.oscilloscope.fetch_x_data,
+                                            self.deviceManager.osc__getattr__('fetch_x_data'),
                                             self.tempDataFile.name, path)
             self.tempDataFile = NamedTemporaryFile(dir=self.tempDataDir.name, delete=False)
             self.tempDataAcquired = False
@@ -187,8 +182,5 @@ class MainWindow(MainWindowBase):
         super().close()
         self.processPoolExecutor.shutdown(wait=True)
 
-        if self.generator != None:
-            self.generator.close()
-
-        if self.oscilloscope != None:
-            self.oscilloscope.stop()
+        if self.deviceManager != None:
+            self.deviceManager.stop()
