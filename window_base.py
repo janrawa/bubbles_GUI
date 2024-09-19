@@ -35,13 +35,21 @@ class ConnectionDialog(QDialog):
         self.buttonBox.accepted.connect(lambda: self.close())
         self.buttonBox.rejected.connect(lambda: self.close())
 
-        layout      = QVBoxLayout()
-        message     = QLabel("Select:")
-        self.comboBox    = QComboBox(self)
-        self.comboBox.addItems(item_list)
+        layout          = QVBoxLayout()
+        messageGen      = QLabel("Select generator:")
+        messageOsc      = QLabel("Select oscilloscope:")
 
-        layout.addWidget(message)
-        layout.addWidget(self.comboBox)
+        self.comboGen   = QComboBox(self)
+        self.comboOsc   = QComboBox(self)
+        self.comboGen.addItems(item_list)
+        self.comboOsc.addItems(item_list)
+
+        layout.addWidget(messageGen)
+        layout.addWidget(self.comboGen)
+        
+        layout.addWidget(messageOsc)
+        layout.addWidget(self.comboOsc)
+        
         layout.addWidget(self.buttonBox)
         self.setLayout(layout)
 
