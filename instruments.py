@@ -101,11 +101,11 @@ class Generator(Instrument):
         TypeError: in __setattr__: Attribute 'amplitude' must be a float or convertible to float.
         TypeError: in __setattr__: Attribute 'state' must be a bool or convertible to bool.
     """
-    def __init__(self, *args, timeout=2, **kwargs):
+    def __init__(self, *args, timeout=2, output_channel=1, **kwargs):
         super().__init__(*args, **kwargs)
         
         self.timeout = timeout
-        self.output_channel=1
+        self._output_channel=output_channel
         self.write('*CLS')  # Clear the status
 
     def __setattr__(self, name: str, value: Any) -> None:
@@ -119,7 +119,7 @@ class Generator(Instrument):
                     except ValueError:
                         raise TypeError(f"Attribute 'amplitude' must be a float or convertible to float.")
 
-                self.write(f':source{self.output_channel}:voltage:amplitude {'%.3f'%value}')
+                self.write(f':source{self._output_channel}:voltage:amplitude {'%.3f'%value}')
             case 'state':
                 # make sure it's bool
                 if not isinstance(value, bool):
@@ -129,9 +129,9 @@ class Generator(Instrument):
                         raise TypeError("Attribute 'state' must be a bool or convertible to bool.")
 
                 if value:
-                    self.write(f':output{self.output_channel}:state on')
+                    self.write(f':output{self._output_channel}:state on')
                 else:
-                    self.write(f':output{self.output_channel}:state off')
+                    self.write(f':output{self._output_channel}:state off')
         
         super().__setattr__(name, value)
     
@@ -141,11 +141,11 @@ class Generator(Instrument):
             case 'instrument_name':
                 return self.ask('*IDN?')
             case 'frequency':
-                return float(self.ask(f':source{self.output_channel}:frequency?'))
+                return float(self.ask(f':source{self._output_channel}:frequency?'))
             case 'amplitude':
-                return float(self.ask(f':source{self.output_channel}:voltage:amplitude?'))
+                return float(self.ask(f':source{self._output_channel}:voltage:amplitude?'))
             case 'state':
-                return True if self.ask(f':output{self.output_channel}:state?') == '1' else False
+                return True if self.ask(f':output{self._output_channel}:state?') == '1' else False
 
 def calculate_peak_voltage(target_pressure):
     pass
