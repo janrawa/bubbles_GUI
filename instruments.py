@@ -101,7 +101,7 @@ class Generator(Instrument):
         TypeError: in __setattr__: Attribute 'amplitude' must be a float or convertible to float.
         TypeError: in __setattr__: Attribute 'state' must be a bool or convertible to bool.
     """
-    def __init__(self, *args, timeout=2, output_channel=1, **kwargs):
+    def __init__(self, *args, timeout=2, output_channel : int=1, **kwargs):
         super().__init__(*args, **kwargs)
         
         self.timeout = timeout
