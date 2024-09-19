@@ -3,7 +3,7 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory
 from known_devices import known_device_list
 from window_base import ConnectionDialog, MainWindowBase
 from instruments import Generator
-from workers import DeviceProcessManager, OscilloscopeProcessManager
+from workers import DeviceManagerProcess
 from save_file import append_binary_file, write_archive_xy
 
 from usbtmc import list_devices
@@ -34,7 +34,7 @@ class MainWindow(MainWindowBase):
         self.processPoolExecutor = ProcessPoolExecutor(max_workers=1)
 
     def initDevices(self, deviceOsc, deviceGen):
-        self.deviceManager = DeviceProcessManager(deviceOsc, deviceGen, autostart=True)
+        self.deviceManager = DeviceManagerProcess(deviceOsc, deviceGen, autostart=True)
 
         # Fetch generator name
         generatorName=self.deviceManager.gen__getattr__('instrument_name')
@@ -132,7 +132,7 @@ class MainWindow(MainWindowBase):
             while not self.deviceManager.data_queue.empty():
                 y=self.deviceManager.data_queue.get()
                 self.tempDataAcquired = True
-                
+
                 append_binary_file(self.tempDataFile.name, y)
                 
                 

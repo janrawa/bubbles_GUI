@@ -106,7 +106,7 @@ class OscilloscopeProcessManager(Process):
         self.join(timeout=2)
         self.oscilloscope.close()
 
-class DeviceProcessManager(Process):
+class DeviceManagerProcess(Process):
     """
     Class designed for handling oscilloscope and generator communication on separete thread.
     Attributes can be accesed from the main thread at any moment without
