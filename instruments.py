@@ -41,8 +41,6 @@ class Oscilloscope(Instrument):
             case 'record_length':
                 return int(self.ask(":WAV:POIN?"))
 
-        super().__getattr__(name)
-
     def fetch_x_data(self):
         """Fetch X-axis data (time data) from the oscilloscope.
 
@@ -148,8 +146,6 @@ class Generator(Instrument):
                 return float(self.ask(f':source{self.output_channel}:voltage:amplitude?'))
             case 'state':
                 return True if self.ask(f':output{self.output_channel}:state?') == '1' else False
-        
-        super().__getattr__(name)
 
 def calculate_peak_voltage(target_pressure):
     pass
