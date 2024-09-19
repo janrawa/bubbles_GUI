@@ -132,7 +132,19 @@ class DeviceProcessManager(Process):
         if autostart:
             self.start()
 
-    def call_osc_method(self, name, *args, timeout=2):
+    # Those methods should be reworked into something more Pythonic
+    # but for now are ok enough
+    def gen__setattr__(self, name: str, value: Any) -> None:
+        self.gen_call_method('__setattr__', name, value)
+    def gen__getattr__(self, name) -> Any:
+        return self.gen_call_method('__getattr__', name)
+    
+    def osc__setattr__(self, name: str, value: Any) -> None:
+        self.osc_call_method('__setattr__', name, value)
+    def osc__getattr__(self, name) -> Any:
+        return self.osc_call_method('__getattr__', name)
+    
+    def osc_call_method(self, name, *args, timeout=2):
         if not self.is_alive():
             raise BrokenPipeError('Process is not running, attributes cannot be accesed!')
         
@@ -145,7 +157,7 @@ class DeviceProcessManager(Process):
             if self.__parent_osc_attr.poll(timeout=timeout):
                 return self.__parent_osc_attr.recv()
         
-    def call_gen_method(self, name, *args, timeout=2):
+    def gen_call_method(self, name, *args, timeout=2):
         if not self.is_alive():
             raise BrokenPipeError('Process is not running, attributes cannot be accesed!')
         
