@@ -119,7 +119,7 @@ class Generator(Instrument):
                     except ValueError:
                         raise TypeError(f"Attribute 'amplitude' must be a float or convertible to float.")
 
-                self.write(f':source{self._output_channel}:voltage:amplitude {'%.3f'%value}')
+                self.write(f':source{self._output_channel}:voltage:amplitude {value:.3f}')
             case 'state':
                 # make sure it's bool
                 if not isinstance(value, bool):

@@ -31,7 +31,7 @@ class MainWindow(MainWindowBase):
             self.changeOscilloscopeState
         )
 
-        self.processPoolExecutor = ProcessPoolExecutor(max_workers=1)
+        self.poolExecutor = ProcessPoolExecutor(max_workers=1)
 
     def initDevices(self, deviceOsc, deviceGen):
         self.deviceManager = DeviceManagerProcess(deviceOsc, deviceGen, autostart=True)
@@ -84,12 +84,17 @@ class MainWindow(MainWindowBase):
             self.connectDevicesDialog()
 
         if self.deviceManager != None:
+            # Fetch generator state
             newGeneratorState = not self.deviceManager.gen__getattr__('state')
             self.deviceManager.gen__setattr__('state', newGeneratorState)
-            # Fetch generator state
+            
             self.generatorGroupBox.connectionButton.updateLabels(
                 newGeneratorState
             )
+            self.generatorGroupBox.updateWidgets(
+                state=newGeneratorState
+            )
+
 
     def changeOscilloscopeState(self):
         """Button logic for oscilloscopeGroupBox.connectionButton. Connects
@@ -106,7 +111,7 @@ class MainWindow(MainWindowBase):
 
             # Update sample rate
             self.oscilloscopeGroupBox.updateWidgets(
-                acquisition_state=self.deviceManager.pause_event.is_set(),
+                acquisition_state=not self.deviceManager.pause_event.is_set(),
                 sample_rate=float_to_eng(self.deviceManager.osc__getattr__('analog_sample_rate'))
             )
 
@@ -152,6 +157,14 @@ class MainWindow(MainWindowBase):
             )
             return
         
+        if not self.deviceManager.data_queue.empty():
+            self.showErrorMessageBox(
+                'Data in queue!', ('Try waiting a while.'
+                                   ' Data in queue waiting to be processed:'
+                                   f' {self.deviceManager.data_queue.qsize()}.')
+            )
+            return
+        
         path = super().saveFile()
 
         if path:
@@ -170,9 +183,9 @@ class MainWindow(MainWindowBase):
 
             # write_archive process wrapper; keeps tempDataFile from beeing deleted
             # before creating an archive
-            self.processPoolExecutor.submit(write_archive_xy, metadata,
-                                            self.deviceManager.osc__getattr__('fetch_x_data'),
-                                            self.tempDataFile.name, path)
+            self.poolExecutor.submit(write_archive_xy, metadata,
+                                     self.deviceManager.osc_call_method('fetch_x_data'),
+                                     self.tempDataFile.name, path)
             self.tempDataFile = NamedTemporaryFile(dir=self.tempDataDir.name, delete=False)
             self.tempDataAcquired = False
 
@@ -180,7 +193,7 @@ class MainWindow(MainWindowBase):
         """Application window will close, than all the devices and processes.
         """
         super().close()
-        self.processPoolExecutor.shutdown(wait=True)
+        self.poolExecutor.shutdown(wait=True)
 
         if self.deviceManager != None:
             self.deviceManager.stop()
