@@ -1,5 +1,6 @@
-from typing import Any
-from usbtmc import Instrument
+from typing import Any, List, Tuple
+from usbtmc import Instrument, list_devices
+from usb.core import Device
 
 from numpy import arange, array, frombuffer, int16
 
@@ -9,7 +10,7 @@ class Oscilloscope(Instrument):
     Args:
         Instrument (class): USBTMC instrument interface client
     """
-    def __init__(self, vendor_id=0x0957, product_id=0x900d, timeout=2):
+    def __init__(self, *args, timeout=2, **kwargs):
         """Create new Oscilloscope object
 
         Args:
@@ -17,7 +18,8 @@ class Oscilloscope(Instrument):
             product_id (hexadecimal, optional): The product ID of the oscilloscope. Defaults to 0x900d.
             timeout (int, optional): Communication timeout in seconds. Defaults to 2.
         """
-        super().__init__(vendor_id, product_id)
+        super().__init__(*args, **kwargs)    
+        
         self.timeout = timeout
         self.write('*CLS')  # Clear the status
         self.write(':system:header off')
@@ -36,6 +38,8 @@ class Oscilloscope(Instrument):
                 return float(self.ask(':acquire:srate:digital?'))
             case 'triggered':
                 return bool(int(self.ask(':TER?')))
+            case 'record_length':
+                return int(self.ask(":WAV:POIN?"))
 
     def fetch_x_data(self):
         """Fetch X-axis data (time data) from the oscilloscope.
@@ -72,9 +76,6 @@ class Oscilloscope(Instrument):
         y_origin = float(self.ask(":WAV:YOR?"))
         y_reference = float(self.ask(":WAV:YREF?"))
 
-        # Get the number of points from the oscilloscope
-        num_points = int(self.ask(":WAV:POIN?"))
-
         # Request the waveform data
         self.write(":WAV:DATA?")
         raw_data = self.read_raw()  # Read raw data
@@ -100,9 +101,12 @@ class Generator(Instrument):
         TypeError: in __setattr__: Attribute 'amplitude' must be a float or convertible to float.
         TypeError: in __setattr__: Attribute 'state' must be a bool or convertible to bool.
     """
-    def __init__(self, vendor_id=0x0699, product_id=0x0343):
-        super().__init__(vendor_id, product_id)
-        self.output_channel=1
+    def __init__(self, *args, timeout=2, output_channel : int=1, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        self.timeout = timeout
+        self._output_channel=output_channel
+        self.write('*CLS')  # Clear the status
 
     def __setattr__(self, name: str, value: Any) -> None:
         # specific procedures to do before setting variable
@@ -115,7 +119,7 @@ class Generator(Instrument):
                     except ValueError:
                         raise TypeError(f"Attribute 'amplitude' must be a float or convertible to float.")
 
-                self.write(f':source{self.output_channel}:voltage:amplitude {value}')
+                self.write(f':source{self._output_channel}:voltage:amplitude {value:.3f}')
             case 'state':
                 # make sure it's bool
                 if not isinstance(value, bool):
@@ -125,10 +129,10 @@ class Generator(Instrument):
                         raise TypeError("Attribute 'state' must be a bool or convertible to bool.")
 
                 if value:
-                    self.write(f':output{self.output_channel}:state on')
+                    self.write(f':output{self._output_channel}:state on')
                 else:
-                    self.write(f':output{self.output_channel}:state off')
-
+                    self.write(f':output{self._output_channel}:state off')
+        
         super().__setattr__(name, value)
     
     def __getattr__(self, name: str) -> Any:
@@ -137,11 +141,11 @@ class Generator(Instrument):
             case 'instrument_name':
                 return self.ask('*IDN?')
             case 'frequency':
-                return float(self.ask(f':source{self.output_channel}:frequency?'))
+                return float(self.ask(f':source{self._output_channel}:frequency?'))
             case 'amplitude':
-                return float(self.ask(f':source{self.output_channel}:voltage:amplitude?'))
+                return float(self.ask(f':source{self._output_channel}:voltage:amplitude?'))
             case 'state':
-                return True if self.ask(f':output{self.output_channel}:state?') == '1' else False
+                return True if self.ask(f':output{self._output_channel}:state?') == '1' else False
 
 def calculate_peak_voltage(target_pressure):
     pass
