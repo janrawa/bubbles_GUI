@@ -172,7 +172,7 @@ class DeviceManagerProcess(Process):
         
     def run(self):
         while not self.stop_event.is_set():
-            # Poll oscilloscope attribute pipe
+            # Poll generator attribute pipe
             if self.__child_gen_attr.poll():
                 # Get method name and *args
                 attr_name, *args=self.__child_gen_attr.recv()
@@ -182,7 +182,7 @@ class DeviceManagerProcess(Process):
                         self.__child_gen_attr.send(attr(*args))
                     else:
                         self.__child_gen_attr.send(None)
-            # Poll generator attribute pipe
+            # Poll osciloscope attribute pipe
             elif self.__child_osc_attr.poll():
                 # Get method name and *args
                 attr_name, *args=self.__child_osc_attr.recv()
