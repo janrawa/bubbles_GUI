@@ -4,6 +4,15 @@ GUI for automatic generator voltage tunning based on oscilloscope (Agilent Techn
 Program is designed to be simple and modifiable in case the instruments change.
 If you need to connect diffrent device feel free to edit `instrument.py` file.
 
+## Benchmarking
+The are limitations on transfer speeds beetween Oscilloscope and PC. Transfer time is a quadratic function with neglegible first term:
+$$
+y(x)\approx3.468\cdot10^{-15}x^2 + 8.657\cdot10^{-8}x + 0.0276.
+$$
+![Plot with points and fitted polynomial](Benchmark.png)
+Benchmarking was performed on computer with AMD Ryzen 7 3700X 8-Core Processor, so resoults may vary based on that. Record length is a quantity of points in a single acquisition.
+
+
 ## Configuring udev
 If you cannot access your device without running your script as root follow the link: [Python USBTMC Readme](http://alexforencich.com/wiki/en/python-usbtmc/readme)
 or are running it on Windows (untested).
