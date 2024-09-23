@@ -193,11 +193,11 @@ class DeviceManagerProcess(Process):
                     else:
                         self.__child_gen_attr.send(None)
             # Perform data acquisition and put it on data_queue
-            elif self.pause_event.is_set() \
-                    and self.__osc.triggered:
-                y=self.__osc.fetch_y_data()
-                self.data_queue.put(y)
-                del y
+            elif self.pause_event.is_set():
+                if self.__osc.triggered:
+                    y=self.__osc.fetch_y_data()
+                    self.data_queue.put(y)
+                    del y
             
             sleep(.001)
 
