@@ -2,11 +2,8 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 from known_devices import known_device_list
 from window_base import ConnectionDialog, MainWindowBase
-from instruments import Generator
 from workers import DeviceManagerProcess
 from save_file import append_binary_file, write_archive_xy
-
-from usbtmc import list_devices
 
 from concurrent.futures import ProcessPoolExecutor
 
