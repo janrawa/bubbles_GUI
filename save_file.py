@@ -34,7 +34,7 @@ def write_archive_xy(metadata           : dict,
 
     Args:
         metadata (dict): metadata dictionary with generator/osciloscope info
-        x_data_array (_type_): array of x values of osciloscope (time)
+        x_data_array (ndarray): array of x values of osciloscope (time)
         y_data_file_path (str): path to binary file with y data
         dest_archive (str): path to destination archive
     """
