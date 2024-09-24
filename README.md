@@ -4,9 +4,7 @@ GUI for automatic generator voltage tunning based on oscilloscope (Agilent Techn
 
 
 ## Benchmarking
-The are limitations on transfer speeds beetween Oscilloscope and PC. Transfer time is a quadratic function with neglegible first term:
-
-$$y(x)\approx3.468\cdot10^{-15}x^2 + 8.657\cdot10^{-8}x + 0.0276.$$
+The are limitations on transfer speeds beetween Oscilloscope and PC. Transfer time is an exponential function. Mostly linear below 200k samples.
 
 ![Plot with points and fitted polynomial](Benchmark.png)
 
