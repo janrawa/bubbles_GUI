@@ -1,4 +1,4 @@
-from numpy import mean, searchsorted, sum, abs
+from numpy import array, mean, searchsorted, sum, abs
 from numpy.typing import ArrayLike
 
 from scipy.fft import fftfreq, fft
@@ -129,9 +129,15 @@ class AmplitudeRegulator:
         Returns:
             float: calculated new vpp
         """
-        meanSignal=mean(self.voltageRegister, axis=0)
+        try:
+            y=array(self.voltageRegister)
+        except:
+            # no data found just return vpp unchanged
+            return v0
 
-        xf=fftfreq(len(meanSignal), 1/sample_rate)[:len(meanSignal)//2]
-        yf=abs(fft(meanSignal))[:len(meanSignal)//2]
+        xf=fftfreq(y.shape[1], 1/sample_rate)[:y.shape[1]//2]
+        yf=abs(fft(y, axis=1))[:, :y.shape[1]//2]
 
-        return calculate_voltage(v0, xf, yf, f0)
+        mean_yf = mean(yf, axis=0)
+
+        return calculate_voltage(v0, xf, mean_yf, f0)
