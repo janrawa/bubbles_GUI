@@ -6,16 +6,12 @@ from numpy import arange, array, frombuffer, int16
 
 class Oscilloscope(Instrument):
     """Oscilloscope communication class for easy acces to x and y values displayed on the instrument.
-
-    Args:
-        Instrument (class): USBTMC instrument interface client
     """
     def __init__(self, *args, timeout=2, **kwargs):
-        """Create new Oscilloscope object
+        """Create new Oscilloscope object based on usbtmc.Intrument.
+        All connection methods of usbtmc should work with Oscilloscope class.
 
         Args:
-            vendor_id (hexadecimal, optional): The vendor ID of the oscilloscope. Defaults to 0x0957.
-            product_id (hexadecimal, optional): The product ID of the oscilloscope. Defaults to 0x900d.
             timeout (int, optional): Communication timeout in seconds. Defaults to 2.
         """
         super().__init__(*args, **kwargs)    

@@ -119,6 +119,16 @@ class AmplitudeRegulator:
     
     def updateAmplitude(self, sample_rate : float,
                         v0 : float, f0 : float) -> float:
+        """Calculates new voltage peak to peak based on the old one. With all safety features included.
+
+        Args:
+            sample_rate (float): sample rate of signals stored in register.
+            v0 (float): vpp of generator ouput
+            f0 (float): frequency of generator ouput
+
+        Returns:
+            float: calculated new vpp
+        """
         meanSignal=mean(self.voltageRegister, axis=0)
 
         xf=fftfreq(len(meanSignal), 1/sample_rate)[:len(meanSignal)//2]

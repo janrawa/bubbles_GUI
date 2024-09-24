@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import QApplication
-from window_pyQt6 import MainWindow
+from main_window import MainWindow
 
 if __name__ == '__main__':
 

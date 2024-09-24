@@ -13,6 +13,8 @@ def float_to_eng(number:float, digits:int=4):
 
 class MainWindow(MainWindowBase):
     def __init__(self):
+        """Main window of the program. Connecting logic to buttons from MainWindowBase.
+        """
         super().__init__()
         self.tempDataDir        = TemporaryDirectory()
         self.tempDataFile       = NamedTemporaryFile(dir=self.tempDataDir.name, delete=False)

@@ -8,9 +8,33 @@ from instruments import Generator, Oscilloscope
 
 class DeviceManagerProcess(Process):
     """
-    Class designed for handling oscilloscope and generator communication on separete thread.
+    Class handling oscilloscope and generator communication on separete thread.
     Attributes can be accesed from the main thread at any moment without
     causing issues.
+
+    IMPORTANT FOR ANY FUTURE MAINTAINER:
+        * If you want to add any other functionality to any device and use it with this class:
+            1. Edit __getattr__ and/or __setattr__ methods of Oscilloscope and/or Generator
+            2. Use appropriete methods:
+                * Get values using:
+                    - gen__getattr__
+                    - osc__getattr__
+                * Set values using"
+                    - gen__setattr__
+                    - osc__setattr__
+
+        * If you want to, please rework this mess. I tried and wasted a whole bunch of time and patience.
+        
+        WARNING:
+            !!! ANY PROGRAM CRASH WITHIN MAIN LOOP OF PROCESS HANDLED WITH THIS
+            CLASS WILL COUSE UNDEFINED BEHAVIOUR !!!
+                * IT WILL F UP YOUR SETUP.
+                * IT WILL BREAK COMUNICATION WITH INSTRUMENTS.
+                * PROGRAM RESTART WILL NOT HELP YOU.
+            
+            As of 24.09.2024 no real fixes exist.
+            Sometimes even full restart of instrumentation won't help.
+            Eventually after many restarts and wasted time it will un F itself.
     """
     def __init__(self, oscilloscopeDevice, generatorDevice=None, autostart=False) -> None:
         super().__init__()
@@ -71,6 +95,12 @@ class DeviceManagerProcess(Process):
                 return self.__parent_gen_attr.recv()
         
     def run(self):
+        """Main loop of manager process. All calls are performed sequentially
+        in following order:
+            1. generator calls
+            2. oscilloscope calls
+            3. y-data fetch
+        """
         while not self.stop_event.is_set():
             # Poll generator attribute pipe
             if self.__child_gen_attr.poll():
