@@ -2,6 +2,18 @@
 ## Introduction
 GUI for automatic generator voltage tunning based on oscilloscope (Agilent Technologies MSO9404A) readout.
 
+## How to use
+1. Connect devices to PC.
+2. Setup devices as describen in [Configuring udev](#configuring_udev).
+3. Startup the program.
+4. Click either 'Connect' button.
+5. Select devices.
+    - If you encounter issues with this step try running script as root (not recomended).
+6. After establishing connection buttons have new functions:
+    - Button in 'Generator' panel toggles voltage tuner
+    - Button in 'Oscilloscope' panel toggles data acquisistion.
+7. (Optional) Save recorded data using save in toolbar menu.
+8. Exit
 
 ## Benchmarking
 The are limitations on transfer speeds beetween Oscilloscope and PC. Transfer time is an exponential function. Mostly linear below 200k samples.
@@ -11,7 +23,7 @@ The are limitations on transfer speeds beetween Oscilloscope and PC. Transfer ti
 Benchmarking was performed on computer with AMD Ryzen 7 3700X 8-Core Processor, so resoults may vary based on that. Record length is a quantity of points in a single acquisition.
 
 
-## Configuring udev
+## <a name="configuring_udev"></a>Configuring udev
 If you cannot access your device without running your script as root follow the link: [Python USBTMC Readme](http://alexforencich.com/wiki/en/python-usbtmc/readme)
 or are running it on Windows (untested).
 
