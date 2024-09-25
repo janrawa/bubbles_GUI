@@ -1,3 +1,5 @@
-PyQt6==6.7.1
-python_usbtmc==0.8
-pyusb==1.2.1
+PyQt6>=6.7.1
+python_usbtmc>=0.8
+pyusb>=1.2.1
+numpy>=2.1.1
+scipy>=1.14.1
