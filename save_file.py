@@ -27,7 +27,7 @@ def write_archive(metadata : dict, source_data_name : str, dest_archive : str):
     os.remove(source_data_name)
 
 def write_archive_xy(metadata           : dict,
-                     x_data_array,
+                     x_data_array       : NDArray,
                      y_data_file_path   : str,
                      dest_archive       : str):
     """Writes metadata x and y values of the scope into a compressed zip archive.
