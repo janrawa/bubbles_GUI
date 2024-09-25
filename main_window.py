@@ -3,7 +3,7 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory
 from known_devices import known_device_list
 from window_base import ConnectionDialog, MainWindowBase
 from workers import DeviceManagerProcess
-from save_file import append_binary_file, write_archive_xy
+from save_file import queue_to_binary_file, write_archive_xy
 
 from concurrent.futures import ProcessPoolExecutor
 
@@ -133,11 +133,9 @@ class MainWindow(MainWindowBase):
             * <add more later>
         """
         if self.deviceManager != None:
-            while not self.deviceManager.data_queue.empty():
-                y=self.deviceManager.data_queue.get()
-                self.tempDataAcquired = True
-
-                append_binary_file(self.tempDataFile.name, y)
+            self.poolExecutor.submit(queue_to_binary_file,
+                                     self.tempDataFile.name,
+                                     self.deviceManager.data_queue)
                 
                 
 
