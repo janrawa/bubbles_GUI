@@ -1,8 +1,7 @@
-from typing import Any, List, Tuple
-from usbtmc import Instrument, list_devices
-from usb.core import Device
+from typing import Any
+from usbtmc import Instrument
 
-from numpy import arange, array, frombuffer, int16
+from numpy import arange, frombuffer, int16
 
 class Oscilloscope(Instrument):
     """Oscilloscope communication class for easy acces to x and y values displayed on the instrument.

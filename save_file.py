@@ -3,7 +3,7 @@ from tempfile import NamedTemporaryFile
 import zipfile
 import os
 
-import numpy
+from numpy.typing import NDArray
 
 
 
@@ -73,7 +73,7 @@ def write_archive_xy(metadata           : dict,
     print('Data Saved in:', dest_archive)
     os.remove(y_data_file_path)
 
-def append_binary_file(dest_file : str, data : numpy.array):
+def append_binary_file(dest_file : str, data : NDArray):
         # write y-vals of the waveform into file
         with open(dest_file, 'ab') as file:
             file.write(data.tobytes())

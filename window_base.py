@@ -1,11 +1,11 @@
-from typing import Any, List, Tuple, Union
+from typing import Tuple, Union
 from PyQt6.QtWidgets import (QMainWindow, QApplication, QGroupBox, QLabel,
                              QGridLayout, QWidget, QPushButton, QFileDialog,
                              QMessageBox, QDialogButtonBox, QDialog, QVBoxLayout,
                              QComboBox)
 
-from PyQt6.QtGui import QAction, QIcon
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal
+from PyQt6.QtGui import QAction
+from PyQt6.QtCore import Qt, QTimer
 
 from abc import abstractmethod
 import sys
