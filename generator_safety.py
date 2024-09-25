@@ -1,69 +1,70 @@
-from numpy import array, mean, searchsorted, sum, abs
+from numpy import array, mean, searchsorted, any, iinfo, int64
 from numpy.typing import ArrayLike
 
 from scipy.fft import fftfreq, fft
-from scipy.signal import savgol_filter  # For advanced smoothing
+from scipy.signal import find_peaks  # For advanced smoothing
 
-from numba import jit, float64, boolean
-
-@jit(float64(float64, float64, float64))
 def clip(x:float, vmin:float, vmax:float) -> float:
     return max(vmin, min(x, vmax))
 
-@jit(float64(float64[:], float64[:], float64))
-def close_far_field_integral_fraction(xf: ArrayLike, yf_mag: ArrayLike, f: float):
-    """Calculates integral of Fourier magnitude (abs(fft(y))) of close and far field.
-    Close field is defined as +- 5% around peak frequency,
-    far field is defined as +- 10% around peak frequency.
+def find_argpeaks_around_f(xf:ArrayLike, yf:ArrayLike, f:float, threshold:float=.25) -> int:
+    """Detects peaks in +- 5% range around specified freaquency.
+    Becouse of distance parameter of find_peaks beeing equal to 
+    argrange:
+    This function should return only ONE peak or infinity.
 
     Args:
-        xf (ArrayLike): frequency spectrum
-        yf_mag (ArrayLike): Fourier magnitude
-        f (float): peak frequency
+        xf (ArrayLike): frequency values - sorted
+        yf (ArrayLike): signal spectrum
+        f  (float):     approximate peak frequency
+        threshold (float, optional): threshold value used in scipy.signal.find_peaks. Defaults to .25.
 
     Returns:
-        float: two times fraction of integrals
-    """
-    f_close_arglim = (
+        int: index of peak
+    """    
+    argrange = (
         searchsorted(xf, f * 0.95),  # 95% of f
         searchsorted(xf, f * 1.05)   # 105% of f
     )
 
-    f_far_arglim = (
-        searchsorted(xf, f * 0.9),  # 90% of f
-        searchsorted(xf, f * 1.1)   # 110% of f
-    )
-
-    # Sum close field
-    f_close_sum = sum(yf_mag[f_close_arglim[0]:f_close_arglim[1]])
+    # becouse of distance, find_peaks should always
+    # find one peak - the tallest one
+    argpeaks = find_peaks(yf[argrange[0]: argrange[1]],
+                          distance=argrange[1]-argrange[0],
+                          threshold=threshold,)[0] + argrange[0]
     
-    # Sum far field by concatenating slices
-    f_far_sum   = sum(yf_mag[f_far_arglim[0]:f_far_arglim[1]])
+    if len(argpeaks) == 0:
+        return iinfo(int64).max
+    else:
+        return argpeaks[0]
 
-    # multiplied by 2 becouse close range is 10% and far range is 20%
-    return 2*f_close_sum / f_far_sum
-
-@jit(boolean(float64[:], float64[:], float64))
-def subharmonics_present(xf: ArrayLike, yf_mag: ArrayLike, f0: float):
-    """Subharmonics detection function based on close_far_field_integral_fraction method.
-    Subharmonics detection values (found in return) are fitted using experimental data.
+def subharmonic_detected(xf:ArrayLike, yf:ArrayLike, f0:float) -> bool:
+    """If any subharmonic detected return true
+    if none detected return false.
 
     Args:
-        xf (ArrayLike): frequency spectrum
-        yf_mag (ArrayLike): Fourier magnitude
-        f0 (float): generator frequency
+        xf (ArrayLike): frequency values - sorted
+        yf (ArrayLike): signal spectrum
+        f0 (float):     generator frequency
 
     Returns:
-        bool: are subharmonics 3/2f0 OR 5/2f0 present?
+        bool: truth value of detected peak
     """
-    # yf_mag = savgol_filter(yf_mag, window_length=51, polyorder=2)
+    
+    argpeaks_detected=array([
+        find_argpeaks_around_f(xf, yf, 3/2*f0),
+        find_argpeaks_around_f(xf, yf, 5/2*f0),
+    ])
+    
+    argpeaks=array([
+        searchsorted(xf, 3/2*f0),
+        searchsorted(xf, 5/2*f0),
+    ])
 
-    peak32=close_far_field_integral_fraction(xf, yf_mag, 3/2 * f0)
-    peak52=close_far_field_integral_fraction(xf, yf_mag, 5/2 * f0)
+    distance=abs(argpeaks_detected - argpeaks)
 
-    return (peak32>0.95) or (peak52>1.0)
+    return bool(any(distance < 8))
 
-@jit(float64(float64, float64[:], float64[:], float64))
 def calculate_voltage(v0 : float, xf: ArrayLike, yf_mag: ArrayLike, f0: float) -> float:
     """Calculates new voltage value based on the current voltage and presence of subharmonics.
     Maximum rate of change is dv = 0.02 V. Resoulting voltage is cliped to stay below 2V for savety reasons.
@@ -79,7 +80,7 @@ def calculate_voltage(v0 : float, xf: ArrayLike, yf_mag: ArrayLike, f0: float) -
     """
     dv = 0.02 # voltage change
 
-    subharmonics=subharmonics_present(xf, yf_mag, f0)
+    subharmonics=subharmonic_detected(xf, yf_mag, f0)
 
     # subharmonics present -> drop voltage
     if subharmonics == True:
