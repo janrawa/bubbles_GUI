@@ -3,7 +3,7 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory
 from known_devices import known_device_list
 from window_base import ConnectionDialog, MainWindowBase
 from workers import DeviceManagerProcess
-from save_file import queue_to_binary_file, write_archive_xy
+from save_file import list_to_binary_file, write_archive_xy
 
 from concurrent.futures import ProcessPoolExecutor
 
@@ -133,11 +133,21 @@ class MainWindow(MainWindowBase):
             * <add more later>
         """
         if self.deviceManager != None:
-            self.poolExecutor.submit(queue_to_binary_file,
-                                     self.tempDataFile.name,
-                                     self.deviceManager.data_queue)
+            data_list=[]
+            while not self.deviceManager.data_queue.empty():
+                data_list.append(
+                    self.deviceManager.data_queue.get()
+                )
+
+                self.poolExecutor.submit(list_to_binary_file,
+                                        self.tempDataFile.name,
+                                        data_list)
                 
+                # update signal register
+                self.deviceManager.amplitudeRegulator \
+                    .signalRegister.extend(data_list)
                 
+                self.deviceManager.updateAmplitude()
 
     def saveFile(self):
         """Perform neccesary checks and save acquired data to archive.
