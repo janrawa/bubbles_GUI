@@ -110,16 +110,17 @@ class RollingRegister(list):
             super().pop(0)
 
 class AmplitudeRegulator:
-    def __init__(self, window_length : int) -> None:
+    def __init__(self, window_length : int, threshold:float=100) -> None:
         """Regulates generator voltage
 
         Args:
             window_length (int): number of signal samples - used for averaging of signal
         """
-        self.voltageRegister   = RollingRegister(window_length)
+        self.signalRegister   = RollingRegister(window_length)
+        self.threshold         = threshold
     
-    def updateAmplitude(self, sample_rate : float,
-                        v0 : float, f0 : float) -> float:
+    def updateAmplitude(self, v0 : float, f0 : float,
+                        sample_rate : float) -> float:
         """Calculates new voltage peak to peak based on the old one. With all safety features included.
 
         Args:
@@ -131,7 +132,7 @@ class AmplitudeRegulator:
             float: calculated new vpp
         """
         try:
-            y=array(self.voltageRegister)
+            y=array(self.signalRegister)
         except:
             # no data found just return vpp unchanged
             return v0
@@ -141,4 +142,4 @@ class AmplitudeRegulator:
 
         mean_yf = mean(yf, axis=0)
 
-        return calculate_voltage(v0, xf, mean_yf, f0)
+        return calculate_voltage(v0, xf, mean_yf, f0, self.threshold)
