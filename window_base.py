@@ -2,14 +2,32 @@ from typing import Tuple, Union
 from PyQt6.QtWidgets import (QMainWindow, QApplication, QGroupBox, QLabel,
                              QGridLayout, QWidget, QPushButton, QFileDialog,
                              QMessageBox, QDialogButtonBox, QDialog, QVBoxLayout,
-                             QComboBox)
+                             QComboBox, QHBoxLayout, QLineEdit)
 
-from PyQt6.QtGui import QAction
+from PyQt6.QtGui import QAction, QIntValidator, QDoubleValidator
 from PyQt6.QtCore import Qt, QTimer
 
 from abc import abstractmethod
 import sys
 
+def showErrorMessageBox(error : Union[str, Exception], description : str = None, parent = None):
+        """Show QMessageBox with error message and optional description.
+
+        Args:
+            error (Union[str, Exception]): error code to display
+            description (str, optional): descritption of the error. Defaults to None.
+        """
+        if isinstance(error, Exception):
+            try:
+                error=str(error)
+            except Exception as e:
+                showErrorMessageBox(e, parent=parent)
+
+        warning_dialog=QMessageBox(parent=parent)
+        warning_dialog.setWindowTitle("Error!")
+        warning_dialog.setText(error)
+        warning_dialog.setDetailedText(description)
+        warning_dialog.exec()
 
 class ConnectionButton(QPushButton):
     def __init__(self):
@@ -52,6 +70,124 @@ class ConnectionDialog(QDialog):
         
         layout.addWidget(self.buttonBox)
         self.setLayout(layout)
+
+class SettingsDialog(QDialog):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.updatedSettings = {}
+
+        self.myLayout=QVBoxLayout()
+        self.myLayout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        # self.settingLineEdits = [
+        #     ('volatage',        self.createSetting('Voltage [V]', 0.0, (0.0, 2.0))),
+        #     ('frequency',       self.createSetting('Frequency [Hz]', 0.0, (0.0, 2.0))),
+        #     ('peak_threshold',  self.createSetting('Peak detection threshold', 0.0, (0.0, 2.0))),
+        # ]
+
+        self.settingLineEdits = self.createSettings([
+            {'name':'volatage',         'label':'Voltage [V]',              'default':1.0,      'range':(0.5, 2.0)},
+            {'name':'frequency',        'label':'Frequency [Hz]',           'default':1.5e6,    'range':(1e6, 2e6)},
+            {'name':'peak_threshold',   'label':'Peak detection threshold', 'default':1e3,      'range':(100., 10000.)},
+        ])
+
+        # self.settingLineEdits.append()
+        # self.settingLineEdits.append()
+        # self.settingLineEdits.append()
+
+        self.buttonBox = QDialogButtonBox()
+        self.buttonBox.setCenterButtons(True)
+
+        buttonOk=self.buttonBox.addButton(QDialogButtonBox.StandardButton.Ok)
+        buttonApply=self.buttonBox.addButton(QDialogButtonBox.StandardButton.Apply)
+        buttonCancel=self.buttonBox.addButton(QDialogButtonBox.StandardButton.Cancel)
+        
+        # if self.setSettings() is succesfull than self.close()
+        buttonOk.clicked.connect(lambda:self.close() if self.recordUpdatedSettings() else None)
+        buttonApply.clicked.connect(self.recordUpdatedSettings)
+        buttonCancel.clicked.connect(self.close)
+        
+        self.myLayout.addWidget(self.buttonBox)
+        self.setLayout(self.myLayout)
+        # deletes refrence to self.myLayout
+        del self.myLayout
+    
+    def recordUpdatedSettings(self) -> bool:
+        """Checks
+
+        Returns:
+            bool: _description_
+        """
+        changedSettings = {}
+        for name, lineEdit in self.settingLineEdits:
+            if lineEdit.text() != "":
+                if not lineEdit.hasAcceptableInput():
+                    showErrorMessageBox('Invalid value!', f'Value set in {name} is invalid!')
+                    return False
+                changedSettings.update({name:lineEdit.text()})
+        
+        self.updatedSettings.update(changedSettings)
+        print(self.updatedSettings)
+        return True
+
+    def createSettings(self, settings:list[dict]) -> tuple:
+        layout=QGridLayout(self)
+        row=0
+        settingLineEdits=[]
+        for setting in settings:
+            settingLabel    = QLabel(setting['label'])
+            settingLineEdit = QLineEdit()
+
+            layout.addWidget(settingLabel, row, 0)
+            layout.addWidget(settingLineEdit, row, 1)
+            row += 1
+
+            settingLineEdit.setPlaceholderText(str(setting['default']))
+            settingLineEdit.setAlignment(Qt.AlignmentFlag.AlignRight)
+
+            settingLineEdit.setValidator(self.createValidator(setting['default'], setting['range']))
+
+            settingLineEdits.append((setting['name'], settingLineEdit))
+        
+        self.myLayout.addLayout(layout)
+        return tuple(settingLineEdits)
+            
+
+    def createSetting(self, label:str, default:Union[int, float], range=None) -> QLineEdit:
+            settingLabel    = QLabel(label)
+            settingLineEdit = QLineEdit()
+            settingLayout   = QHBoxLayout()
+
+            settingLineEdit.setPlaceholderText(str(default))
+            settingLineEdit.setAlignment(Qt.AlignmentFlag.AlignRight)
+
+            settingLineEdit.setValidator(self.createValidator(default, range))
+            
+            settingLayout.addWidget(settingLabel)
+            settingLayout.addWidget(settingLineEdit)
+            
+            self.myLayout.addLayout(settingLayout)
+
+            return settingLineEdit
+            
+    @staticmethod
+    def createValidator(default, range):
+        if type(default) == int:
+            validator = QIntValidator()
+        elif type(default) == float:
+            validator = QDoubleValidator()
+            validator.setDecimals(3)
+        else:
+            return None
+        
+        if range != None:
+            validator.setRange(*range)
+            validator.setDecimals(3)
+        
+        return validator
+
+
+
 
 class GeneratorGroupBox(QGroupBox):
     def __init__(self):
@@ -162,14 +298,15 @@ class MainWindowBase(QMainWindow):
 
         # Create actions
         save_action     = QAction('&Save', self)
+        settings_action = QAction('&Settings', self)
         exit_action     = QAction('&Exit', self)
                 
         # Connect triggers
         save_action.triggered.connect(self.saveFile)
+        settings_action.triggered.connect(self.openSettings)
         exit_action.triggered.connect(self.close)  # Connect Exit to close the application
 
-        menu_bar.addAction(save_action)
-        menu_bar.addAction(exit_action)
+        menu_bar.addActions([save_action, settings_action, exit_action])
 
     def createUpdateTimer(self):
         # Initialize counter
@@ -195,6 +332,10 @@ class MainWindowBase(QMainWindow):
             file_path += ".zip"
         
         return file_path
+    
+    def openSettings(self):
+        settingsDialog=SettingsDialog(self)
+        settingsDialog.show()
 
     @abstractmethod
     def updateWidgets(self):
@@ -211,23 +352,13 @@ class MainWindowBase(QMainWindow):
         pass
 
     def showErrorMessageBox(self, error : Union[str, Exception], description : str = None):
-        """Show QMessageBox with error message and optional description.
+        """Calls showErrorMessageBox function.
 
         Args:
             error (Union[str, Exception]): error code to display
             description (str, optional): descritption of the error. Defaults to None.
         """
-        if isinstance(error, Exception):
-            try:
-                error=str(error)
-            except Exception as e:
-                self.showErrorMessageBox(e)
-
-        warning_dialog=QMessageBox(self)
-        warning_dialog.setWindowTitle("Error!")
-        warning_dialog.setText(error)
-        warning_dialog.setDetailedText(description)
-        warning_dialog.exec()
+        showErrorMessageBox(error, description, self)
 
     def showComboMessageBox(self, item_list=Tuple[str]):
         dialog=ConnectionDialog(self, item_list=item_list)
