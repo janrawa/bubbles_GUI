@@ -130,7 +130,7 @@ class MainWindow(MainWindowBase):
     def performBackgroundTasks(self):
         """Perform background tasks:
             * save acquired data to binary file,
-            * <add more later>
+            * adjust voltage of generator
         """
         if self.deviceManager != None:
             data_list=[]
@@ -139,15 +139,18 @@ class MainWindow(MainWindowBase):
                     self.deviceManager.data_queue.get()
                 )
 
-                self.poolExecutor.submit(list_to_binary_file,
-                                        self.tempDataFile.name,
-                                        data_list)
-                
-                # update signal register
-                self.deviceManager.amplitudeRegulator \
-                    .signalRegister.extend(data_list)
-                
-                self.deviceManager.updateAmplitude()
+                if len(data_list) >= 8:
+                    break
+
+            self.poolExecutor.submit(list_to_binary_file,
+                                    self.tempDataFile.name,
+                                    data_list)
+            
+            # update signal register
+            self.deviceManager.amplitudeRegulator \
+                .signalRegister.extend(data_list)
+            
+            self.deviceManager.updateAmplitude()
 
     def saveFile(self):
         """Perform neccesary checks and save acquired data to archive.
