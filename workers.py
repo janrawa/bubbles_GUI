@@ -2,8 +2,9 @@ from time import sleep
 from typing import Any
 from types import MethodType
 
-from multiprocessing import Queue, Process, Event, Pipe
+from multiprocessing import Manager, Queue, Process, Event, Pipe
 
+from generator_safety import AmplitudeRegulator
 from instruments import Generator, Oscilloscope
 
 class DeviceManagerProcess(Process):
@@ -39,7 +40,7 @@ class DeviceManagerProcess(Process):
     def __init__(self, oscilloscopeDevice, generatorDevice=None, autostart=False) -> None:
         super().__init__()
         self.daemon = True
-        self.data_queue = Queue()
+        self.data_queue = Manager().Queue()
 
         # pipes for communication with main thread
         # child pipes accesible only in child thread
@@ -53,8 +54,18 @@ class DeviceManagerProcess(Process):
         self.__osc = Oscilloscope(oscilloscopeDevice)
         self.__gen = Generator(generatorDevice)
 
+        self.amplitudeRegulator=AmplitudeRegulator(8)
+
         if autostart:
             self.start()
+    
+    def updateAmplitude(self):
+        v=self.deviceManager.amplitudeRegulator.updateAmplitude(
+            self.gen__getattr__('amplitude'),
+            self.gen__getattr__('frequency'),
+            self.osc__getattr__('analog_sample_rate'),
+        )
+        self.set__getattr__('amplitude', v)
 
     # Those methods should be reworked into something more Pythonic
     # but for now are ok enough
@@ -93,7 +104,7 @@ class DeviceManagerProcess(Process):
         if not self.stop_event.is_set():
             if self.__parent_gen_attr.poll(timeout=timeout):
                 return self.__parent_gen_attr.recv()
-        
+
     def run(self):
         """Main loop of manager process. All calls are performed sequentially
         in following order:

@@ -7,7 +7,7 @@ from scipy.signal import find_peaks  # For advanced smoothing
 def clip(x:float, vmin:float, vmax:float) -> float:
     return max(vmin, min(x, vmax))
 
-def find_argpeaks_around_f(xf:ArrayLike, yf:ArrayLike, f:float, threshold:float=.25) -> int:
+def find_argpeaks_around_f(xf:ArrayLike, yf:ArrayLike, f:float, threshold: float) -> int:
     """Detects peaks in +- 5% range around specified freaquency.
     Becouse of distance parameter of find_peaks beeing equal to 
     argrange:
@@ -38,7 +38,7 @@ def find_argpeaks_around_f(xf:ArrayLike, yf:ArrayLike, f:float, threshold:float=
     else:
         return argpeaks[0]
 
-def subharmonic_detected(xf:ArrayLike, yf:ArrayLike, f0:float) -> bool:
+def subharmonic_detected(xf:ArrayLike, yf:ArrayLike, f0:float, threshold: float) -> bool:
     """If any subharmonic detected return true
     if none detected return false.
 
@@ -52,8 +52,8 @@ def subharmonic_detected(xf:ArrayLike, yf:ArrayLike, f0:float) -> bool:
     """
     
     argpeaks_detected=array([
-        find_argpeaks_around_f(xf, yf, 3/2*f0),
-        find_argpeaks_around_f(xf, yf, 5/2*f0),
+        find_argpeaks_around_f(xf, yf, 3/2*f0, threshold),
+        find_argpeaks_around_f(xf, yf, 5/2*f0, threshold),
     ])
     
     argpeaks=array([
@@ -65,7 +65,7 @@ def subharmonic_detected(xf:ArrayLike, yf:ArrayLike, f0:float) -> bool:
 
     return bool(any(distance < 8))
 
-def calculate_voltage(v0 : float, xf: ArrayLike, yf_mag: ArrayLike, f0: float) -> float:
+def calculate_voltage(v0 : float, xf: ArrayLike, yf_mag: ArrayLike, f0: float, threshold: float) -> float:
     """Calculates new voltage value based on the current voltage and presence of subharmonics.
     Maximum rate of change is dv = 0.02 V. Resoulting voltage is cliped to stay below 2V for savety reasons.
 
@@ -80,7 +80,7 @@ def calculate_voltage(v0 : float, xf: ArrayLike, yf_mag: ArrayLike, f0: float) -
     """
     dv = 0.02 # voltage change
 
-    subharmonics=subharmonic_detected(xf, yf_mag, f0)
+    subharmonics=subharmonic_detected(xf, yf_mag, f0, threshold)
 
     # subharmonics present -> drop voltage
     if subharmonics == True:
@@ -110,16 +110,17 @@ class RollingRegister(list):
             super().pop(0)
 
 class AmplitudeRegulator:
-    def __init__(self, window_length : int) -> None:
+    def __init__(self, window_length : int, threshold:float=100) -> None:
         """Regulates generator voltage
 
         Args:
             window_length (int): number of signal samples - used for averaging of signal
         """
-        self.voltageRegister   = RollingRegister(window_length)
+        self.signalRegister   = RollingRegister(window_length)
+        self.threshold         = threshold
     
-    def updateAmplitude(self, sample_rate : float,
-                        v0 : float, f0 : float) -> float:
+    def updateAmplitude(self, v0 : float, f0 : float,
+                        sample_rate : float) -> float:
         """Calculates new voltage peak to peak based on the old one. With all safety features included.
 
         Args:
@@ -131,7 +132,7 @@ class AmplitudeRegulator:
             float: calculated new vpp
         """
         try:
-            y=array(self.voltageRegister)
+            y=array(self.signalRegister)
         except:
             # no data found just return vpp unchanged
             return v0
@@ -141,4 +142,4 @@ class AmplitudeRegulator:
 
         mean_yf = mean(yf, axis=0)
 
-        return calculate_voltage(v0, xf, mean_yf, f0)
+        return calculate_voltage(v0, xf, mean_yf, f0, self.threshold)

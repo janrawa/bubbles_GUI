@@ -3,7 +3,7 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory
 from known_devices import known_device_list
 from window_base import ConnectionDialog, MainWindowBase
 from workers import DeviceManagerProcess
-from save_file import append_binary_file, write_archive_xy
+from save_file import list_to_binary_file, write_archive_xy
 
 from concurrent.futures import ProcessPoolExecutor
 
@@ -130,16 +130,27 @@ class MainWindow(MainWindowBase):
     def performBackgroundTasks(self):
         """Perform background tasks:
             * save acquired data to binary file,
-            * <add more later>
+            * adjust voltage of generator
         """
         if self.deviceManager != None:
+            data_list=[]
             while not self.deviceManager.data_queue.empty():
-                y=self.deviceManager.data_queue.get()
-                self.tempDataAcquired = True
+                data_list.append(
+                    self.deviceManager.data_queue.get()
+                )
 
-                append_binary_file(self.tempDataFile.name, y)
-                
-                
+                if len(data_list) >= 8:
+                    break
+
+            self.poolExecutor.submit(list_to_binary_file,
+                                    self.tempDataFile.name,
+                                    data_list)
+            
+            # update signal register
+            self.deviceManager.amplitudeRegulator \
+                .signalRegister.extend(data_list)
+            
+            self.deviceManager.updateAmplitude()
 
     def saveFile(self):
         """Perform neccesary checks and save acquired data to archive.

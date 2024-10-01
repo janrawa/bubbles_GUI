@@ -1,4 +1,5 @@
 import json
+from multiprocessing import Queue
 from tempfile import NamedTemporaryFile
 import zipfile
 import os
@@ -77,3 +78,21 @@ def append_binary_file(dest_file : str, data : NDArray):
         # write y-vals of the waveform into file
         with open(dest_file, 'ab') as file:
             file.write(data.tobytes())
+
+def queue_to_binary_file(dest_file : str, data_queue : Queue):
+    with open(dest_file, 'ab') as file:
+        while not data_queue.empty():
+            y=data_queue.get()
+            file.write(y.tobytes())
+
+def list_to_binary_file(dest_file : str, data_list : list):
+    """Saves gathered data in bathes to binary file
+
+    Args:
+        dest_file (str): path to binary file
+        data_list (list): list of numpy arrays objects
+    """
+    with open(dest_file, 'ab') as file:
+        for array in data_list:
+            file.write(array.tobytes())
+
