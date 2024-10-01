@@ -121,7 +121,7 @@ class DeviceManagerProcess(Process):
                     if type(attr) == MethodType:
                         self.__child_osc_attr.send(attr(*args))
                     else:
-                        self.__child_gen_attr.send(None)
+                        self.__child_osc_attr.send(None)
             # Perform data acquisition and put it on data_queue
             elif self.pause_event.is_set():
                 if self.__osc.triggered:
