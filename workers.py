@@ -4,7 +4,7 @@ from types import MethodType
 
 from multiprocessing import Queue, Process, Event, Pipe
 
-from instruments import Generator, Oscilloscope
+from instruments import Oscilloscope
 
 class DeviceManagerProcess(Process):
     """
@@ -36,14 +36,13 @@ class DeviceManagerProcess(Process):
             Sometimes even full restart of instrumentation won't help.
             Eventually after many restarts and wasted time it will un F itself.
     """
-    def __init__(self, oscilloscopeDevice, generatorDevice=None, autostart=False) -> None:
+    def __init__(self, oscilloscopeDevice, autostart=False) -> None:
         super().__init__()
         self.daemon = True
         self.data_queue = Queue()
 
         # pipes for communication with main thread
         # child pipes accesible only in child thread
-        self.__parent_gen_attr, self.__child_gen_attr = Pipe()
         self.__parent_osc_attr, self.__child_osc_attr = Pipe()
 
         self.pause_event = Event()
@@ -51,18 +50,13 @@ class DeviceManagerProcess(Process):
         self.stop_event  = Event()
 
         self.__osc = Oscilloscope(oscilloscopeDevice)
-        self.__gen = Generator(generatorDevice)
 
         if autostart:
             self.start()
 
     # Those methods should be reworked into something more Pythonic
     # but for now are ok enough
-    def gen__setattr__(self, name: str, value: Any) -> None:
-        self.gen_call_method('__setattr__', name, value)
-    def gen__getattr__(self, name) -> Any:
-        return self.gen_call_method('__getattr__', name)
-    
+
     def osc__setattr__(self, name: str, value: Any) -> None:
         self.osc_call_method('__setattr__', name, value)
     def osc__getattr__(self, name) -> Any:
@@ -81,19 +75,6 @@ class DeviceManagerProcess(Process):
             if self.__parent_osc_attr.poll(timeout=timeout):
                 return self.__parent_osc_attr.recv()
         
-    def gen_call_method(self, name, *args, timeout=2):
-        if not self.is_alive():
-            raise BrokenPipeError('Process is not running, attributes cannot be accesed!')
-        
-        if hasattr(self.__gen, name):
-            self.__parent_gen_attr.send((name, *args))
-        else:
-            raise AttributeError('Generator attribute not found!')
-
-        if not self.stop_event.is_set():
-            if self.__parent_gen_attr.poll(timeout=timeout):
-                return self.__parent_gen_attr.recv()
-        
     def run(self):
         """Main loop of manager process. All calls are performed sequentially
         in following order:
@@ -102,18 +83,8 @@ class DeviceManagerProcess(Process):
             3. y-data fetch
         """
         while not self.stop_event.is_set():
-            # Poll generator attribute pipe
-            if self.__child_gen_attr.poll():
-                # Get method name and *args
-                attr_name, *args=self.__child_gen_attr.recv()
-                if hasattr(self.__gen, attr_name):
-                    attr=getattr(self.__gen, attr_name)
-                    if type(attr) == MethodType:
-                        self.__child_gen_attr.send(attr(*args))
-                    else:
-                        self.__child_gen_attr.send(None)
             # Poll osciloscope attribute pipe
-            elif self.__child_osc_attr.poll():
+            if self.__child_osc_attr.poll():
                 # Get method name and *args
                 attr_name, *args=self.__child_osc_attr.recv()
                 if hasattr(self.__osc, attr_name):
@@ -121,7 +92,7 @@ class DeviceManagerProcess(Process):
                     if type(attr) == MethodType:
                         self.__child_osc_attr.send(attr(*args))
                     else:
-                        self.__child_gen_attr.send(None)
+                        self.__child_osc_attr.send(None)
             # Perform data acquisition and put it on data_queue
             elif self.pause_event.is_set():
                 if self.__osc.triggered:
@@ -158,4 +129,3 @@ class DeviceManagerProcess(Process):
         self.stop_event.set()
         self.join(timeout=2)
         self.__osc.close()
-        self.__gen.close()

@@ -36,16 +36,11 @@ class ConnectionDialog(QDialog):
         self.buttonBox.rejected.connect(lambda: self.close())
 
         layout          = QVBoxLayout()
-        messageGen      = QLabel("Select generator:")
         messageOsc      = QLabel("Select oscilloscope:")
 
-        self.comboGen   = QComboBox(self)
         self.comboOsc   = QComboBox(self)
-        self.comboGen.addItems(item_list)
         self.comboOsc.addItems(item_list)
-
-        layout.addWidget(messageGen)
-        layout.addWidget(self.comboGen)
+        
         
         layout.addWidget(messageOsc)
         layout.addWidget(self.comboOsc)
@@ -143,12 +138,10 @@ class MainWindowBase(QMainWindow):
         self.setWindowTitle('Bubbles GUI')
 
         self.createMenuBar()
-        self.generatorGroupBox    = GeneratorGroupBox()
         self.oscilloscopeGroupBox = OscilloscopeGroupBox()
         
         mainLayout = QGridLayout()
-        mainLayout.addWidget(self.generatorGroupBox, 0, 0)
-        mainLayout.addWidget(self.oscilloscopeGroupBox, 0, 1)
+        mainLayout.addWidget(self.oscilloscopeGroupBox, 0, 0)
 
         centralWidget = QWidget(self)
         centralWidget.setLayout(mainLayout)
