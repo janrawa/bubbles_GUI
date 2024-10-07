@@ -131,13 +131,13 @@ class AmplitudeRegulator:
         Returns:
             float: calculated new vpp
         """
-        
-        if len(self.signalRegister) < 2:
-            y=array(self.signalRegister)
-            xf=fftfreq(y.shape[1], 1/sample_rate)[:y.shape[1]//2]
-            yf=abs(fft(y, axis=1))[:, :y.shape[1]//2]
-            return v0
 
+        if len(self.signalRegister) < 2:
+            return v0
+        
+        y=array(self.signalRegister)
+        xf=fftfreq(y.shape[1], 1/sample_rate)[:y.shape[1]//2]
+        yf=abs(fft(y, axis=1))[:, :y.shape[1]//2]
         mean_yf = mean(yf, axis=0)
 
         return calculate_voltage(v0, xf, mean_yf, f0, self.threshold)
