@@ -22,6 +22,7 @@ class MainWindow(MainWindowBase):
 
 
         self.deviceManager  = None
+        self.futureVoltage  = None
 
         self.generatorGroupBox.connectionButton.clicked.connect(
             self.changeGeneratorState
@@ -152,7 +153,16 @@ class MainWindow(MainWindowBase):
             
             # if generator is on then update amplitude
             if self.deviceManager.gen__getattr__('state'):
-                self.deviceManager.updateAmplitude()
+                if self.futureVoltage == None:
+                    self.futureVoltage=self.poolExecutor.submit(
+                        self.deviceManager.amplitudeRegulator.updateAmplitude,
+                        self.gen__getattr__('amplitude'),
+                        self.gen__getattr__('frequency'),
+                        self.osc__getattr__('analog_sample_rate'),
+                    )
+                elif self.futureVoltage.done():
+                    self.gen__setattr__('amplitude', self.futureVoltage.resoult())
+                    self.futureVoltage = None
 
     def saveFile(self):
         """Perform neccesary checks and save acquired data to archive.
