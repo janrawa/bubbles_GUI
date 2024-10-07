@@ -32,8 +32,8 @@ class ConnectionDialog(QDialog):
 
         self.buttonBox = QDialogButtonBox(QBtn)
 
-        self.buttonBox.accepted.connect(lambda: self.close())
-        self.buttonBox.rejected.connect(lambda: self.close())
+        self.buttonBox.accepted.connect(self.close)
+        self.buttonBox.rejected.connect(self.close)
 
         layout          = QVBoxLayout()
         messageGen      = QLabel("Select generator:")
