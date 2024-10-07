@@ -60,7 +60,7 @@ class DeviceManagerProcess(Process):
             self.start()
     
     def updateAmplitude(self):
-        v=self.deviceManager.amplitudeRegulator.updateAmplitude(
+        v=self.amplitudeRegulator.updateAmplitude(
             self.gen__getattr__('amplitude'),
             self.gen__getattr__('frequency'),
             self.osc__getattr__('analog_sample_rate'),
