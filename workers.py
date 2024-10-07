@@ -65,7 +65,7 @@ class DeviceManagerProcess(Process):
             self.gen__getattr__('frequency'),
             self.osc__getattr__('analog_sample_rate'),
         )
-        self.set__getattr__('amplitude', v)
+        self.gen__setattr__('amplitude', v)
 
     # Those methods should be reworked into something more Pythonic
     # but for now are ok enough
