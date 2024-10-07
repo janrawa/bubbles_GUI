@@ -150,7 +150,9 @@ class MainWindow(MainWindowBase):
             self.deviceManager.amplitudeRegulator \
                 .signalRegister.extend(data_list)
             
-            self.deviceManager.updateAmplitude()
+            # if generator is on then update amplitude
+            if self.deviceManager.gen__getattr__('state'):
+                self.deviceManager.updateAmplitude()
 
     def saveFile(self):
         """Perform neccesary checks and save acquired data to archive.
