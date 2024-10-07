@@ -29,7 +29,7 @@ class MainWindow(MainWindowBase):
 
         self.poolExecutor = ProcessPoolExecutor(max_workers=1)
 
-    def initDevices(self, deviceOsc):
+    def initDevice(self, deviceOsc):
         self.deviceManager = DeviceManagerProcess(deviceOsc, autostart=True)
 
         # Fetch oscilloscope name
@@ -49,9 +49,8 @@ class MainWindow(MainWindowBase):
         )
 
         dialog.buttonBox.accepted.connect(
-            lambda: self.initDevices(
-                device_list[dialog.comboOsc.currentIndex()] if len(device_list) else None,
-                device_list[dialog.comboGen.currentIndex()] if len(device_list) else None
+            lambda: self.initDevice(
+                device_list[dialog.comboOsc.currentIndex()] if len(device_list) else None
             )
         )
         
