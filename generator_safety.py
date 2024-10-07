@@ -131,14 +131,12 @@ class AmplitudeRegulator:
         Returns:
             float: calculated new vpp
         """
-        try:
+        
+        if len(self.signalRegister) < 2:
             y=array(self.signalRegister)
-        except:
-            # no data found just return vpp unchanged
+            xf=fftfreq(y.shape[1], 1/sample_rate)[:y.shape[1]//2]
+            yf=abs(fft(y, axis=1))[:, :y.shape[1]//2]
             return v0
-
-        xf=fftfreq(y.shape[1], 1/sample_rate)[:y.shape[1]//2]
-        yf=abs(fft(y, axis=1))[:, :y.shape[1]//2]
 
         mean_yf = mean(yf, axis=0)
 
