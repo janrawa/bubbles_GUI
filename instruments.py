@@ -38,7 +38,7 @@ class Oscilloscope(Instrument):
             case 'record_length':
                 return int(self.ask(":WAV:POIN?"))
             case 'channel':
-                return int(self.ask(f":WAV:SOUR?"))
+                return self.ask(f":WAV:SOUR?")
 
     def fetch_x_data(self):
         """Fetch X-axis data (time data) from the oscilloscope.
