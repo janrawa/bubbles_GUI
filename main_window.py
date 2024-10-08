@@ -52,7 +52,8 @@ class MainWindow(MainWindowBase):
 
         # Fetch oscilloscope name
         self.oscilloscopeGroupBox.updateWidgets(
-            instrument_name=self.deviceManager.osc__getattr__('instrument_name')
+            instrument_name=self.deviceManager.osc__getattr__('instrument_name'),
+            channel=self.self.deviceManager.osc__getattr__('channel'),
         )
         # Fetch acquisition state
         self.oscilloscopeGroupBox.connectionButton.updateLabels(

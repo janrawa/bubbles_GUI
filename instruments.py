@@ -6,7 +6,7 @@ from numpy import arange, frombuffer, int16
 class Oscilloscope(Instrument):
     """Oscilloscope communication class for easy acces to x and y values displayed on the instrument.
     """
-    def __init__(self, *args, timeout=2, **kwargs):
+    def __init__(self, *args, channel=1, timeout=2, **kwargs):
         """Create new Oscilloscope object based on usbtmc.Intrument.
         All connection methods of usbtmc should work with Oscilloscope class.
 
@@ -22,6 +22,8 @@ class Oscilloscope(Instrument):
         self.write(':waveform:byteorder lsbfirst')
         self.write(':waveform:format word')  # Set waveform format to 16-bit word
 
+        self.write(f":WAV:SOUR CHAN{channel}")  # Set the channel to read from
+
     def __getattr__(self, name: str) -> Any:
         # specific procedures to do before returning variable
         match name:
@@ -35,6 +37,8 @@ class Oscilloscope(Instrument):
                 return bool(int(self.ask(':TER?')))
             case 'record_length':
                 return int(self.ask(":WAV:POIN?"))
+            case 'channel':
+                return int(self.ask(f":WAV:SOUR?"))
 
     def fetch_x_data(self):
         """Fetch X-axis data (time data) from the oscilloscope.
@@ -53,19 +57,13 @@ class Oscilloscope(Instrument):
         x_data = arange(num_points) * x_increment + x_origin - x_reference * x_increment
         return x_data
 
-    def fetch_y_data(self, channel=1):
+    def fetch_y_data(self):
         """Fetch Y-axis data (voltage data) from the oscilloscope for a specified channel.
-
-        Args:
-            channel (int, optional): The channel number to fetch data from. Defaults to 1.
 
         Returns:
             numpy.ndarray: Numpy array of Y-axis data (voltage values).
-        """        
+        """
         
-        # Set the channel to read from
-        self.write(f":WAV:SOUR CHAN{channel}")
-
         # Get Y data scaling parameters
         y_increment = float(self.ask(":WAV:YINC?"))
         y_origin = float(self.ask(":WAV:YOR?"))
