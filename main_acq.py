@@ -1,6 +1,6 @@
+#!/usr/bin/env python
 from PyQt6.QtWidgets import QApplication
-from window_base import MainWindowBase
-
+from GUI.main_window_acq import MainWindow
 
 if __name__ == '__main__':
 
@@ -18,6 +18,6 @@ if __name__ == '__main__':
     # Apply the style sheet to the application
     app.setStyleSheet(style_sheet)
 
-    main = MainWindowBase()
+    main = MainWindow()
     main.show()
     sys.exit(app.exec())

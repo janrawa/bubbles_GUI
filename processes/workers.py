@@ -4,8 +4,8 @@ from types import MethodType
 
 from multiprocessing import Manager, Queue, Process, Event, Pipe
 
-from generator_safety import AmplitudeRegulator
-from instruments import Generator, Oscilloscope
+from instruments.generator_safety import AmplitudeRegulator
+from instruments.instruments import Generator, Oscilloscope
 
 class DeviceManagerProcess(Process):
     """

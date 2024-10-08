@@ -1,5 +1,6 @@
+#!/usr/bin/env python
 from PyQt6.QtWidgets import QApplication
-from main_window import MainWindow
+from GUI.main_window import MainWindow
 
 if __name__ == '__main__':
 

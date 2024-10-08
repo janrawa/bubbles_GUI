@@ -6,7 +6,6 @@ from PyQt6.QtGui import QAction
 from PyQt6.QtCore import QTimer
 
 from abc import abstractmethod
-import sys
 from .generator_groupbox import GeneratorGroupBox
 from .oscilloscope_groupbox import OscilloscopeGroupBox
 from .connection_dialog import ConnectionDialog

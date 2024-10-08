@@ -1,2 +1,0 @@
-from .main_window_base import MainWindowBase
-from .connection_dialog import ConnectionDialog
