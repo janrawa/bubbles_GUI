@@ -58,7 +58,7 @@ class GeneratorGroupBox(QGroupBox):
         super().__init__('Generator')
 
         instrument_nameLabel    = QLabel('Name')
-        stateLabel              = QLabel('State')
+        stateLabel              = QLabel('Output state')
         frequencyLabel          = QLabel('Frequency')
         amplitudeLabel          = QLabel('Amplitude')
 
@@ -71,15 +71,22 @@ class GeneratorGroupBox(QGroupBox):
 
         self.gridLayout = QGridLayout()
 
-        self.gridLayout.addWidget(instrument_nameLabel, 0, 0)
-        self.gridLayout.addWidget(stateLabel, 1, 0)
-        self.gridLayout.addWidget(frequencyLabel, 2, 0)
-        self.gridLayout.addWidget(amplitudeLabel, 3, 0)
-
-        self.gridLayout.addWidget(self.instrument_name,  0, 1, alignment=Qt.AlignmentFlag.AlignRight)
-        self.gridLayout.addWidget(self.state,            1, 1, alignment=Qt.AlignmentFlag.AlignRight)
-        self.gridLayout.addWidget(self.frequency,        2, 1, alignment=Qt.AlignmentFlag.AlignRight)
-        self.gridLayout.addWidget(self.amplitude,        3, 1, alignment=Qt.AlignmentFlag.AlignRight)
+        # Add name labels
+        for indx, widget in enumerate([
+            instrument_nameLabel,
+            stateLabel,
+            frequencyLabel,
+            amplitudeLabel,
+            ]):
+            self.gridLayout.addWidget(widget, indx, 0)
+        # Add value labels
+        for indx, widget in enumerate([
+            self.instrument_name,
+            self.state,
+            self.frequency,
+            self.amplitude,
+            ]):
+            self.gridLayout.addWidget(widget,  indx, 1, alignment=Qt.AlignmentFlag.AlignRight)
 
         self.gridLayout.addWidget(self.connectionButton, 4, 0, 1, 2)
 
@@ -101,10 +108,12 @@ class OscilloscopeGroupBox(QGroupBox):
         super().__init__('Oscilloscope')
 
         instrument_nameLabel    = QLabel('Name')
+        channelNumberLabel      = QLabel('Channel')
         acquisitionStateLabel   = QLabel('Acquisition state')
         sampleRateLabel         = QLabel('Sampling rate')
 
         self.instrument_name    = QLabel('N/A')
+        self.channel            = QLabel('N/A')
         self.acquisition_state  = QLabel('N/A')
         self.sample_rate        = QLabel('N/A')
         
@@ -112,13 +121,22 @@ class OscilloscopeGroupBox(QGroupBox):
         
         self.gridLayout = QGridLayout()
 
-        self.gridLayout.addWidget(instrument_nameLabel, 0, 0)
-        self.gridLayout.addWidget(acquisitionStateLabel, 1, 0)
-        self.gridLayout.addWidget(sampleRateLabel, 2, 0)
-
-        self.gridLayout.addWidget(self.instrument_name,      0, 1, alignment=Qt.AlignmentFlag.AlignRight)
-        self.gridLayout.addWidget(self.acquisition_state,    1, 1, alignment=Qt.AlignmentFlag.AlignRight)
-        self.gridLayout.addWidget(self.sample_rate,          2, 1, alignment=Qt.AlignmentFlag.AlignRight)
+        # Add name labels
+        for indx, widget in enumerate([
+            instrument_nameLabel,
+            channelNumberLabel,
+            acquisitionStateLabel,
+            sampleRateLabel,
+            ]):
+            self.gridLayout.addWidget(widget, indx, 0)
+        # Add value labels
+        for indx, widget in enumerate([
+            self.instrument_name,
+            self.channel,
+            self.acquisition_state,
+            self.sample_rate,
+            ]):
+            self.gridLayout.addWidget(widget, indx, 1, alignment=Qt.AlignmentFlag.AlignRight)
 
         self.gridLayout.addWidget(self.connectionButton, 4, 0, 1, 2)
 
