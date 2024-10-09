@@ -68,7 +68,7 @@ class MainWindowBase(QMainWindow):
         file_path, _ = QFileDialog.getSaveFileName(self, "Save File",
                                                     "", 
                                                     "Archive Files (*.zip)")
-        if not file_path.endswith(".zip"):
+        if file_path and not file_path.endswith(".zip"):
             file_path += ".zip"
         
         return file_path
@@ -170,7 +170,7 @@ class MainWindowAcquisitionOnlyBase(QMainWindow):
         file_path, _ = QFileDialog.getSaveFileName(self, "Save File",
                                                     "", 
                                                     "Archive Files (*.zip)")
-        if not file_path.endswith(".zip"):
+        if file_path and not file_path.endswith(".zip"):
             file_path += ".zip"
         
         return file_path

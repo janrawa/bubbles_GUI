@@ -1,8 +1,8 @@
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 from instruments.known_devices import known_device_list
-from GUI.GUI_base import ConnectionDialog, MainWindowAcquisitionOnlyBase
-from processes.workers import DeviceManagerProcess
+from GUI.GUI_base import ConnectionOscilloscopeDialog, MainWindowAcquisitionOnlyBase
+from processes.workers import AcquisitionManagerProcess
 from misc.save_file import list_to_binary_file, write_archive_xy
 
 from concurrent.futures import ProcessPoolExecutor
@@ -31,7 +31,7 @@ class MainWindow(MainWindowAcquisitionOnlyBase):
         self.poolExecutor = ProcessPoolExecutor(max_workers=1)
 
     def initDevice(self, deviceOsc):
-        self.deviceManager = DeviceManagerProcess(deviceOsc, autostart=True)
+        self.deviceManager = AcquisitionManagerProcess(deviceOsc, autostart=True)
 
         # Fetch oscilloscope name
         self.oscilloscopeGroupBox.updateWidgets(
@@ -45,7 +45,7 @@ class MainWindow(MainWindowAcquisitionOnlyBase):
     def connectDevicesDialog(self):
         # get device
         device_list, str_items=known_device_list()
-        dialog=ConnectionDialog(self,
+        dialog=ConnectionOscilloscopeDialog(self,
             item_list=str_items
         )
 
@@ -73,7 +73,8 @@ class MainWindow(MainWindowAcquisitionOnlyBase):
             # Update sample rate
             self.oscilloscopeGroupBox.updateWidgets(
                 acquisition_state=not self.deviceManager.pause_event.is_set(),
-                sample_rate=float_to_eng(self.deviceManager.osc__getattr__('analog_sample_rate'))
+                sample_rate=float_to_eng(self.deviceManager.osc__getattr__('analog_sample_rate')),
+                channel=self.deviceManager.osc__getattr__('channel'),
             )
 
             self.deviceManager.togglePause()
@@ -97,12 +98,13 @@ class MainWindow(MainWindowAcquisitionOnlyBase):
                     self.deviceManager.data_queue.get()
                 )
 
-                if len(data_list) >= 8:
+                if len(data_list) >= 64:
                     break
 
             self.poolExecutor.submit(list_to_binary_file,
                                     self.tempDataFile.name,
                                     data_list)
+            self.tempDataAcquired   = True
 
     def saveFile(self):
         """Perform neccesary checks and save acquired data to archive.

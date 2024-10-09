@@ -1,2 +1,2 @@
 from .main_window_base import MainWindowBase, MainWindowAcquisitionOnlyBase
-from .connection_dialog import ConnectionDialog
+from .connection_dialog import ConnectionDialog, ConnectionOscilloscopeDialog
