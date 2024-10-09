@@ -1,7 +1,7 @@
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 from instruments.known_devices import known_device_list
-from GUI.GUI_base import ConnectionOscilloscopeDialog, MainWindowAcquisitionOnlyBase
+from GUI.GUI_base import ConnectionAcquisitionOnlyDialog, MainWindowAcquisitionOnlyBase
 from processes.workers import AcquisitionManagerProcess
 from misc.save_file import list_to_binary_file, write_archive_xy
 
@@ -45,7 +45,7 @@ class MainWindow(MainWindowAcquisitionOnlyBase):
     def connectDevicesDialog(self):
         # get device
         device_list, str_items=known_device_list()
-        dialog=ConnectionOscilloscopeDialog(self,
+        dialog=ConnectionAcquisitionOnlyDialog(self,
             item_list=str_items
         )
 

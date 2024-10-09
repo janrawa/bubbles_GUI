@@ -34,7 +34,7 @@ class ConnectionDialog(QDialog):
         layout.addWidget(self.buttonBox)
         self.setLayout(layout)
 
-class ConnectionOscilloscopeDialog(QDialog):
+class ConnectionAcquisitionOnlyDialog(QDialog):
     def __init__(self, *args, item_list : Tuple[str]=('1','2','3','4', ), **kwargs):
         super().__init__(*args, **kwargs)
 
