@@ -51,21 +51,22 @@ sudo udevadm control --reload-rules && sudo udevadm trigger
 
 3. <span style="color: red;">Disconnect and re-connect the USB device.</span>
 
+## Environment setup
+It is advised to use [pyenv](https://github.com/pyenv/pyenv) or equivalent.
 
-## Using the programm
-1. Turn oscilloscope on.
-2. Turn generator on.
-3. Make sure that both devices are plugged in to controller PC and can be detected using `lsusb`.
-4. Run the script `python main.py`.
+1. clone repository: `git clone https://github.com/janrawa/bubbles_GUI.git`
+2. (Install Python build dependencies)[https://github.com/pyenv/pyenv/wiki#suggested-build-environment]
+3. Install Python 3.11.9: `pyenv install 3.11.9`
+4. Inside bubbles_GUI directory set local environment: `pyenv local 3.11.9`
+5. Install dependencies: `pip install -r requirements.txt`
+
 
 ## Dependencies
-### Pip
-* matplotlib==3.9.2
-* numba==0.60.0
-* numpy==2.1.0
-* python_ivi==0.14.9
-* python_usbtmc==0.8
-* samplerate==0.2.1
+Python 3.11.9
+* PyQt6>=6.7.1
+* python_usbtmc>=0.8
+* pyusb>=1.2.1
+* numpy>=2.1.1
+* scipy>=1.14.1
 ### OS
 #### Linux based OS is necessary due to shared memory between processes not working on windows
-* Tkinter 8.6.12
