@@ -34,7 +34,7 @@ class DeviceManagerProcess(Process):
                 * PROGRAM RESTART WILL NOT HELP YOU.
             
             As of 24.09.2024 no real fixes exist.
- GUI/main_window_acq.py           Sometimes even full restart of instrumentation won't help.
+            Sometimes even full restart of instrumentation won't help.
             Eventually after many restarts and wasted time it will un F itself.
     """
     def __init__(self, oscilloscopeDevice, generatorDevice=None, autostart=False) -> None:
