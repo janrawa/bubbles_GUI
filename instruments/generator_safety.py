@@ -1,8 +1,10 @@
 from numpy import array, mean, searchsorted, any, iinfo, int64
 from numpy.typing import ArrayLike
 
+import numpy as np
+
 from scipy.fft import fftfreq, fft
-from scipy.signal import find_peaks  # For advanced smoothing
+from scipy.signal import find_peaks
 
 def clip(x:float, vmin:float, vmax:float) -> float:
     return max(vmin, min(x, vmax))
@@ -23,20 +25,20 @@ def find_argpeaks_around_f(xf:ArrayLike, yf:ArrayLike, f:float, threshold: float
         int: index of peak
     """    
     argrange = (
-        searchsorted(xf, f * 0.95),  # 95% of f
-        searchsorted(xf, f * 1.05)   # 105% of f
+        searchsorted(xf, f * 0.9),  # 95% of f
+        searchsorted(xf, f * 1.1)   # 105% of f
     )
 
     # becouse of distance, find_peaks should always
     # find one peak - the tallest one
     argpeaks = find_peaks(yf[argrange[0]: argrange[1]],
-                          distance=argrange[1]-argrange[0],
-                          threshold=threshold,)[0] + argrange[0]
-    
+                          #threshold=.25,
+                          )[0] + argrange[0]
+    print(argpeaks)
     if len(argpeaks) == 0:
         return iinfo(int64).max
     else:
-        return argpeaks[0]
+        return argpeaks
 
 def subharmonic_detected(xf:ArrayLike, yf:ArrayLike, f0:float, threshold: float) -> bool:
     """If any subharmonic detected return true
@@ -50,20 +52,16 @@ def subharmonic_detected(xf:ArrayLike, yf:ArrayLike, f0:float, threshold: float)
     Returns:
         bool: truth value of detected peak
     """
-    
-    argpeaks_detected=array([
-        find_argpeaks_around_f(xf, yf, 3/2*f0, threshold),
-        find_argpeaks_around_f(xf, yf, 5/2*f0, threshold),
-    ])
-    
+
     argpeaks=array([
         searchsorted(xf, 3/2*f0),
         searchsorted(xf, 5/2*f0),
     ])
+    
+    distance32=abs(array([find_argpeaks_around_f(xf, yf, 3/2*f0, threshold)]) - argpeaks[0])
+    distance52=abs(array([find_argpeaks_around_f(xf, yf, 5/2*f0, threshold)]) - argpeaks[1])
 
-    distance=abs(argpeaks_detected - argpeaks)
-
-    return bool(any(distance < 8))
+    return bool(any(distance32 < 8)) or bool(any(distance52 < 8))
 
 def calculate_voltage(v0 : float, xf: ArrayLike, yf_mag: ArrayLike, f0: float, threshold: float) -> float:
     """Calculates new voltage value based on the current voltage and presence of subharmonics.
@@ -88,7 +86,7 @@ def calculate_voltage(v0 : float, xf: ArrayLike, yf_mag: ArrayLike, f0: float, t
     else:
         dv=+dv
     
-    return clip(v0+dv, 0.020, 2.0) # min voltage 20 mV, max voltage 2 V
+    return clip(v0+dv, 0.20, .70) # min voltage 20 mV, max voltage 2 V
 
 class RollingRegister(list):
     def __init__(self, maxlen : int) -> None:
@@ -110,7 +108,7 @@ class RollingRegister(list):
             super().pop(0)
 
 class AmplitudeRegulator:
-    def __init__(self, window_length : int, threshold:float=100) -> None:
+    def __init__(self, window_length : int, threshold:float=1000) -> None:
         """Regulates generator voltage
 
         Args:
@@ -140,4 +138,4 @@ class AmplitudeRegulator:
         yf=abs(fft(y, axis=1))[:, :y.shape[1]//2]
         mean_yf = mean(yf, axis=0)
 
-        return calculate_voltage(v0, xf, mean_yf, f0, self.threshold)
+        return calculate_voltage(v0, xf, np.log(mean_yf), f0, self.threshold)

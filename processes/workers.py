@@ -54,7 +54,7 @@ class DeviceManagerProcess(Process):
         self.__osc = Oscilloscope(oscilloscopeDevice)
         self.__gen = Generator(generatorDevice)
 
-        self.amplitudeRegulator=AmplitudeRegulator(8)
+        self.amplitudeRegulator=AmplitudeRegulator(4)
 
         if autostart:
             self.start()
